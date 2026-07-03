@@ -10,3 +10,4 @@ test/fixtures/*.pdf
 .agents/
 *.heapdump
 *.core
+skills-lock.json
