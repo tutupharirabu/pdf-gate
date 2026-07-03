@@ -17,12 +17,11 @@ import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 // ---------------------------------------------------------------------------
 
 /**
- * In Node.js we disable the worker by setting workerSrc to a null-ish value.
- * pdfjs-dist v4 will fall back to a synchronous, fake worker when no src is
- * configured. This avoids the need to manage a separate worker binary while
- * keeping the API fully functional in a single-threaded Node process.
+ * In Node.js we configure pdfjs-dist to run synchronously without
+ * a web worker, which simplifies deployment. An empty string tells
+ * pdfjs-dist v4 to skip worker loading.
  */
-pdfjs.GlobalWorkerOptions.workerSrc = /** @type {any} */ (null);
+try { pdfjs.GlobalWorkerOptions.workerSrc = ''; } catch (_) { /* ignore */ }
 
 // ---------------------------------------------------------------------------
 // Constants

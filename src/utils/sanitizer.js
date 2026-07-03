@@ -87,9 +87,9 @@ export function sanitizeOptions(options) {
 
   const source = options;
 
-  // 1. Reject forbidden keys (prototype pollution vectors)
+  // 1. Reject forbidden keys (prototype pollution vectors) — own properties only
   for (const key of FORBIDDEN_KEYS) {
-    if (key in source || Object.prototype.hasOwnProperty.call(source, key)) {
+    if (Object.prototype.hasOwnProperty.call(source, key)) {
       throw new Error(
         `Options mengandung key terlarang "${key}" — kemungkinan prototype pollution.`,
       );

@@ -72,6 +72,7 @@ const rules = [
 
 const ijazah = {
   name: 'ijazah',
+  label: 'Ijazah',
   fingerprints,
   fingerprintMin,
   heuristics,

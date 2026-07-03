@@ -65,6 +65,7 @@ const rules = [
 
 const ktp = {
   name: 'ktp',
+  label: 'KTP Digital',
   fingerprints,
   fingerprintMin,
   heuristics,

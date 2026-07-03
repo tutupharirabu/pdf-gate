@@ -65,6 +65,7 @@ const rules = [
 
 const transkrip = {
   name: 'transkrip',
+  label: 'Transkrip Nilai',
   fingerprints,
   fingerprintMin,
   heuristics,

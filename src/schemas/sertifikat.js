@@ -59,6 +59,7 @@ const rules = [
 
 const sertifikat = {
   name: 'sertifikat',
+  label: 'Sertifikat',
   fingerprints,
   fingerprintMin,
   heuristics,
