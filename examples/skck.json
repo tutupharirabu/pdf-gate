@@ -1,0 +1,52 @@
+{
+  "name": "skck-polres",
+  "label": "SKCK Polres",
+  "fingerprints": [
+    "/SKCK/i",
+    "/catatan kepolisian/i",
+    "/surat keterangan/i"
+  ],
+  "fingerprintMin": 2,
+  "heuristics": {
+    "minWords": 30,
+    "maxWords": 400
+  },
+  "rules": [
+    {
+      "id": "nama",
+      "label": "Nama Lengkap",
+      "pattern": "/nama\\s*:\\s*.+/i",
+      "required": true
+    },
+    {
+      "id": "ttl",
+      "label": "Tempat / Tanggal Lahir",
+      "pattern": "/tempat\\s*:\\s*.+/i",
+      "required": true
+    },
+    {
+      "id": "nik",
+      "label": "NIK",
+      "pattern": "/\\d{16}/",
+      "required": true
+    },
+    {
+      "id": "alamat",
+      "label": "Alamat",
+      "pattern": "/alamat\\s*:\\s*.+/i",
+      "required": true
+    },
+    {
+      "id": "pekerjaan",
+      "label": "Pekerjaan",
+      "pattern": "/pekerjaan\\s*:\\s*.+/i",
+      "required": false
+    },
+    {
+      "id": "berlaku",
+      "label": "Masa Berlaku",
+      "pattern": "/berlaku\\s+sampai/i",
+      "required": false
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "name": "surat-tanah",
+  "label": "Sertifikat Tanah",
+  "fingerprints": [
+    "/sertifikat/i",
+    "/hak milik/i",
+    "/badan pertanahan/i"
+  ],
+  "fingerprintMin": 2,
+  "heuristics": {
+    "minWords": 40,
+    "maxWords": 500
+  },
+  "rules": [
+    {
+      "id": "nomor",
+      "label": "Nomor Sertifikat",
+      "pattern": "/nomor\\s*:\\s*\\d+/i",
+      "required": true
+    },
+    {
+      "id": "pemilik",
+      "label": "Nama Pemilik",
+      "pattern": "/atas\\s+nama\\s*:\\s*.+/i",
+      "required": true
+    },
+    {
+      "id": "luas",
+      "label": "Luas Tanah",
+      "pattern": "/luas\\s*:\\s*\\d+/i",
+      "required": true
+    },
+    {
+      "id": "lokasi",
+      "label": "Lokasi",
+      "pattern": "/terletak\\s+di/i",
+      "required": true
+    },
+    {
+      "id": "batas",
+      "label": "Batas Tanah",
+      "pattern": "/sebelah\\s+(utara|selatan|timur|barat)/i",
+      "required": false
+    }
+  ]
+}

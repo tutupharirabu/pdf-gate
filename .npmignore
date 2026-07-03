@@ -1,0 +1,11 @@
+src/**/*.test.js
+test/
+examples/
+.git/
+.github/
+*.log
+.*
+!./.gitignore
+coverage/
+.agents/
+node_modules/.cache/

@@ -1,0 +1,57 @@
+{
+  "name": "pdf-gate",
+  "version": "0.1.0",
+  "description": "Dual-layer PDF document validator — content sanity check + cryptographic signature verification for Indonesian formal documents.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Irfan Zharauri Nanda Sudiyanto",
+  "engines": { "node": ">=20.0.0" },
+  "main": "src/index.js",
+  "bin": { "pdf-validate": "./cli/index.js" },
+  "exports": {
+    ".": { "import": "./src/index.js" },
+    "./schemas": "./src/schemas/index.js"
+  },
+  "files": [
+    "src/",
+    "cli/",
+    "README.md",
+    "LICENSE"
+  ],
+  "bundleDependencies": false,
+  "keywords": [
+    "pdf",
+    "validator",
+    "ijazah",
+    "akte-kelahiran",
+    "sim",
+    "passport",
+    "kartu-keluarga",
+    "kk",
+    "kependudukan",
+    "digital-signature",
+    "indonesia",
+    "pkcs7",
+    "document-verification"
+  ],
+  "dependencies": {
+    "@ninja-labs/verify-pdf": "^3.2.1",
+    "picocolors": "^1.0.0",
+    "commander": "^11.1.0",
+    "pdfjs-dist": "^4.0.379"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "scripts": {
+    "test": "node --experimental-vm-modules node_modules/.bin/jest",
+    "test:watch": "node --experimental-vm-modules node_modules/.bin/jest --watch",
+    "test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage",
+    "prepublishOnly": "npm test"
+  },
+  "jest": {
+    "transform": {},
+    "extensionsToTreatAsEsm": [".js"],
+    "testEnvironment": "node"
+  }
+}
