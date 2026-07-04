@@ -5,7 +5,7 @@
  */
 
 const fingerprints = [
-  /\bpaspor\b/i,
+  /(?:nomor\s+)?paspor\s*(?:RI|Republik|Indonesia)/i,
   /republik\s+indonesia/i,
   /imigrasi/i,
   /kewarganegaraan\s*:\s*indonesia/i,
