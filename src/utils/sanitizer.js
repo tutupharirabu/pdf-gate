@@ -189,3 +189,10 @@ export function safeRegexTest(regex, input, timeoutMs = 5000) {
  * @param {string} filePath - The file path to validate.
  * @returns {boolean} `true` if the path is safe, `false` otherwise.
  */
+export function isSafeFilePath(filePath) {
+  if (typeof filePath !== 'string') return false;
+  if (filePath.includes('\0')) return false;
+  // Check for path traversal sequences
+  if (filePath.includes('..') || filePath.includes('../') || filePath.includes('..\\')) return false;
+  return true;
+}

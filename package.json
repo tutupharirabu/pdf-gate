@@ -1,5 +1,5 @@
 {
-  "name": "pdf-gate",
+  "name": "@tutupharirabu/pdf-gate",
   "version": "0.1.0",
   "description": "Dual-layer PDF document validator \u2014 content sanity check + cryptographic signature verification for Indonesian formal documents.",
   "type": "module",
@@ -10,7 +10,7 @@
   },
   "main": "src/index.js",
   "bin": {
-    "pdf-validate": "./cli/index.js"
+    "pdf-validate": "cli/index.js"
   },
   "exports": {
     ".": {

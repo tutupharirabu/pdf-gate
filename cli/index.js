@@ -13,8 +13,17 @@ import { readFileSync, existsSync, writeFileSync, statSync } from 'node:fs';
 import { resolve, basename } from 'node:path';
 import { Command } from 'commander';
 import pc from 'picocolors';
-import { validatePDF, SCHEMAS, registerSchema, loadSchemaFromFile, generateSchema } from '../src/index.js';
-import { MAX_BUFFER_SIZE } from '../src/utils/sanitizer.js';
+import {
+  validatePDF,
+  SCHEMAS,
+  registerSchema,
+  loadSchemaFromFile,
+  generateSchema,
+  isSafeFilePath,
+  assertNoNetwork,
+  zeroBuffer,
+  MAX_BUFFER_SIZE,
+} from '../src/index.js';
 
 const program = new Command();
 
@@ -71,15 +80,29 @@ program
 // ── Handlers ──────────────────────────────────────────────────────────────────
 
 async function handleValidate(file, options) {
+  // ── Path traversal security check on input file ───────────────────
+  if (!isSafeFilePath(file)) {
+    throw new Error(`Akses ditolak: path file "${file}" tidak aman (terdeteksi path traversal).`);
+  }
+
   const filePath = resolve(file);
 
   if (!existsSync(filePath)) {
     throw new Error(`File tidak ditemukan: ${filePath}`);
   }
 
+  // ── Network safety check ──────────────────────────────────────────
+  const netCheck = assertNoNetwork();
+  if (!netCheck.safe) {
+    console.warn(pc.yellow(`  ⚠  Peringatan Keamanan: ${netCheck.reason}`));
+  }
+
   // Load external schemas (before reading the PDF)
   if (options.schemaFile) {
     for (const schemaPath of options.schemaFile) {
+      if (!isSafeFilePath(schemaPath)) {
+        throw new Error(`Akses ditolak: path skema "${schemaPath}" tidak aman (terdeteksi path traversal).`);
+      }
       const absPath = resolve(schemaPath);
       await loadSchemaFromFile(absPath, { allowedRoot: null }); // trusted: operator-supplied CLI path
     }
@@ -99,11 +122,17 @@ async function handleValidate(file, options) {
   const buffer = readFileSync(filePath);
   const skipLayer2 = options.skipCrypto || options.skipLayer2 || false;
 
-  const result = await validatePDF(buffer, {
-    schema: options.schema,
-    fileName: basename(filePath),
-    skipLayer2,
-  });
+  let result;
+  try {
+    result = await validatePDF(buffer, {
+      schema: options.schema,
+      fileName: basename(filePath),
+      skipLayer2,
+    });
+  } finally {
+    // ── Secure Buffer Disposal ────────────────────────────────────────
+    zeroBuffer(buffer);
+  }
 
   if (options.quiet) {
     console.log(result.status);
@@ -125,7 +154,16 @@ async function handleValidate(file, options) {
   process.exit(result.status === 'FAILED' ? 1 : 0);
 }
 
+
 async function handleGenerateSchema(options) {
+  // ── Path traversal safety check ──────────────────────────────────
+  if (!isSafeFilePath(options.generateSchema)) {
+    throw new Error(`Akses ditolak: path template "${options.generateSchema}" tidak aman (terdeteksi path traversal).`);
+  }
+  if (options.output && !isSafeFilePath(options.output)) {
+    throw new Error(`Akses ditolak: path output "${options.output}" tidak aman (terdeteksi path traversal).`);
+  }
+
   const templatePath = resolve(options.generateSchema);
   if (!existsSync(templatePath)) {
     throw new Error(`File template tidak ditemukan: ${templatePath}`);
@@ -135,11 +173,38 @@ async function handleGenerateSchema(options) {
     program.error('--schema-name dan --schema-label wajib diisi saat --generate-schema digunakan.');
   }
 
+  // ── Network safety check ──────────────────────────────────────────
+  const netCheck = assertNoNetwork();
+  if (!netCheck.safe) {
+    console.warn(pc.yellow(`  ⚠  Peringatan Keamanan: ${netCheck.reason}`));
+  }
+
+  // File size check before reading to prevent OOM
+  const stats = statSync(templatePath);
+  if (stats.size > MAX_BUFFER_SIZE) {
+    const sizeMB = (stats.size / 1024 / 1024).toFixed(1);
+    const maxMB = MAX_BUFFER_SIZE / 1024 / 1024;
+    throw new Error(
+      `File template terlalu besar (${sizeMB} MB) melebihi batas ${maxMB} MB. ` +
+      'Tolak demi keamanan.',
+    );
+  }
+
   const buffer = readFileSync(templatePath);
-  const { schema, confidence, detectedFields, warnings } = await generateSchema(buffer, {
-    name: options.schemaName,
-    label: options.schemaLabel,
-  });
+  let schema, confidence, detectedFields, warnings;
+  try {
+    const genResult = await generateSchema(buffer, {
+      name: options.schemaName,
+      label: options.schemaLabel,
+    });
+    schema = genResult.schema;
+    confidence = genResult.confidence;
+    detectedFields = genResult.detectedFields;
+    warnings = genResult.warnings;
+  } finally {
+    // ── Secure Buffer Disposal ────────────────────────────────────────
+    zeroBuffer(buffer);
+  }
 
   // Register the schema
   registerSchema(schema);
@@ -160,6 +225,7 @@ async function handleGenerateSchema(options) {
   }
 
   console.log(pc.green(`\n  ✓ Schema "${schema.name}" registered. Dapat digunakan dengan: --schema ${schema.name}`));
+
 
   // Write to file if --output specified
   if (options.output) {
