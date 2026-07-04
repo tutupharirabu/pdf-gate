@@ -77,7 +77,7 @@ export function calculateConfidence(
   let structureScore = 0;
   if (fieldCount > 0) {
     const patternsSeen = new Set(detectedFields.map((f) => f.pattern));
-    structureScore = patternsSeen.size / 4; // max 4 patterns
+    structureScore = Math.min(patternsSeen.size / 4, 1); // max 4 patterns, clamped
   }
 
   // ----- Weighted combination -----

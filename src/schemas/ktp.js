@@ -8,7 +8,7 @@ const fingerprints = [
   /\b(NIK|nomor\s+induk\s+kependudukan)\b/i,
   /\bkartu\s+tanda\s+penduduk\b/i,
   /\bkewarganegaraan\b/i,
-  /\b\d{16}\b/,
+  /(?:NIK|Nomor\s+Induk)\s*[:,]?\s*\d{16}/i,
 ];
 
 const fingerprintMin = 2;

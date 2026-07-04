@@ -189,30 +189,3 @@ export function safeRegexTest(regex, input, timeoutMs = 5000) {
  * @param {string} filePath - The file path to validate.
  * @returns {boolean} `true` if the path is safe, `false` otherwise.
  */
-export function isSafeFilePath(filePath) {
-  if (typeof filePath !== 'string' || filePath.length === 0) {
-    return false;
-  }
-
-  if (filePath.includes('\x00')) {
-    return false;
-  }
-
-  if (filePath.includes('../') || filePath.includes('..\\')) {
-    return false;
-  }
-
-  const isAbsolute =
-    filePath.startsWith('/') ||
-    /^[a-zA-Z]:[\\/]/.test(filePath);
-
-  if (!isAbsolute) {
-    return false;
-  }
-
-  if (filePath.includes('%2e%2e') || filePath.includes('%2f') || filePath.includes('%5c')) {
-    return false;
-  }
-
-  return true;
-}
