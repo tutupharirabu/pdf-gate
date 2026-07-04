@@ -21,6 +21,7 @@
   "files": [
     "src/",
     "cli/",
+    "generator/",
     "README.md",
     "LICENSE"
   ],

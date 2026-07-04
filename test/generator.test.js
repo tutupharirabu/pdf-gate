@@ -64,6 +64,7 @@ describe('field-detector — detectFieldValuePairs', () => {
     const pairs = detectFieldValuePairs(lines, 'Nama : Ahmad Fauzi');
     expect(pairs.length).toBeGreaterThanOrEqual(1);
     const colonPair = pairs.find(p => p.pattern === 'colon');
+    expect(colonPair).toBeDefined();
     if (colonPair) {
       expect(colonPair.label).toMatch(/nama/i);
       expect(colonPair.value).toMatch(/ahmad/i);
@@ -79,11 +80,12 @@ describe('field-detector — detectFieldValuePairs', () => {
     const pairs = detectFieldValuePairs(lines, 'NIK 3275011501900001');
     // Should detect tabular if gap > 50pt
     const tabularPair = pairs.find(p => p.pattern === 'tabular');
+    expect(tabularPair).toBeDefined();
     if (tabularPair) {
       expect(tabularPair.label).toMatch(/NIK/i);
     }
     // At minimum, some pairs should be detected
-    expect(pairs.length).toBeGreaterThanOrEqual(0);
+    expect(pairs.length).toBeGreaterThan(0);
   });
 
   test('detects stacked label-value (pattern C)', () => {
