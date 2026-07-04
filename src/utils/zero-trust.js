@@ -67,6 +67,7 @@ export function assertNoNetwork() {
   }
 
   return { safe: true, handles: 0, reason: null };
+}
 
 // ── Secure Buffer Disposal ─────────────────────────────────────────────────────
 
@@ -178,4 +179,3 @@ export function createSecureContext(props = {}) {
   return Object.freeze(ctx);
 }
 
-}

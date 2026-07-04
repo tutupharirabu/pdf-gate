@@ -196,19 +196,47 @@ export function unregisterSchema(name) {
 /**
  * Load a schema from a .json or .js file.
  * - .json: JSON.parse, auto-converts "/pattern/flags" strings to RegExp
- * - .js: Dynamic import (expects export default)
- * @param {string} filePath – Absolute path to the schema file
+ * - .js: Dynamic import (expects export default) — mengeksekusi kode, hanya muat file tepercaya
+ *
+ * **Security:** Path yang di-resolve dibatasi pada `options.allowedRoot` (default:
+ * `process.cwd()`) untuk mencegah path traversal dan arbitrary file read/RCE.
+ * Pass `{ allowedRoot: null }` untuk menonaktifkan pembatasan pada konteks tepercaya
+ * (mis. CLI yang dijalankan operator).
+ *
+ * @param {string} filePath – Path file schema (relatif atau absolut)
+ * @param {object} [options={}]
+ * @param {string|null} [options.allowedRoot=process.cwd()] – Direktori root untuk
+ *        membatasi path. Pass `null` untuk mengizinkan path absolut mana pun (trusted use).
  * @returns {Promise<import('../types.js').Schema>}
  * @throws {Error}
  */
-export async function loadSchemaFromFile(filePath) {
+export async function loadSchemaFromFile(filePath, options = {}) {
   const { readFile } = await import('node:fs/promises');
-  const { extname } = await import('node:path');
+  const path = await import('node:path');
 
-  const ext = extname(filePath).toLowerCase();
+  // ── Security: batasi path pada allowed root untuk cegah path traversal ──
+  // Resolve ke path absolut dan tolak apa pun yang keluar dari direktori yang
+  // diizinkan. Mencegah load file sistem arbitrer (mis. ../../etc/passwd) dan
+  // membatasi .js dynamic import() — yang mengeksekusi kode — pada lokasi tepercaya.
+  const allowedRoot = options.allowedRoot === null
+    ? null
+    : path.resolve(options.allowedRoot || process.cwd());
+  const absPath = path.resolve(filePath);
+
+  if (allowedRoot !== null) {
+    const rel = path.relative(allowedRoot, absPath);
+    if (rel.startsWith('..') || path.isAbsolute(rel)) {
+      throw new Error(
+        `Akses ditolak: path "${filePath}" berada di luar direktori yang diizinkan ` +
+        `("${allowedRoot}"). Gunakan opsi { allowedRoot } untuk mengizinkan direktori lain.`
+      );
+    }
+  }
+
+  const ext = path.extname(absPath).toLowerCase();
 
   if (ext === '.json') {
-    const raw = await readFile(filePath, 'utf-8');
+    const raw = await readFile(absPath, 'utf-8');
     const obj = JSON.parse(raw);
 
     // Convert fingerprint strings to RegExp
@@ -231,12 +259,23 @@ export async function loadSchemaFromFile(filePath) {
   }
 
   if (ext === '.js') {
-    const mod = await import(filePath);
+    const mod = await import(absPath);
     const schema = mod.default || mod;
     return registerSchema(schema);
   }
 
   throw new Error(`Format file tidak didukung: ${ext}. Gunakan .json atau .js.`);
+}
+
+
+/**
+ * Return a read-only snapshot of all registered schemas.
+ * Consumers that only need to read should use this to avoid
+ * accidentally mutating the internal registry.
+ * @returns {Map<string, import('../types.js').Schema>}
+ */
+export function getAllSchemas() {
+  return new Map(SCHEMAS);
 }
 
 export { SCHEMAS };

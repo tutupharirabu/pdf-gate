@@ -5,7 +5,7 @@
 > **8 schema built-in · Zero-trust · No network · < 50KB core**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20.0.0-brightgreen)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22.0.0-brightgreen)](https://nodejs.org/)
 [![Zero Trust](https://img.shields.io/badge/Zero%20Trust-✅-blue)](#)
 
 ---
@@ -28,7 +28,7 @@
 npm install pdf-gate
 ```
 
-**Requirement**: Node.js >= 20.0.0
+**Requirement**: Node.js >= 22.0.0
 
 ---
 
@@ -220,9 +220,12 @@ Engine mendeteksi **4 pola layout**: colon-separated, tabular/box, stacked label
 
 ## 🧪 Testing
 
+> **Note:** Jest requires the `--experimental-vm-modules` Node.js flag for ESM support.
+> The `npm test` script already includes this flag.
+
 ```bash
 npm install
-npm test                 # Run all tests
+npm test                 # Run all tests (7 suites, 87 tests)
 npm run test:coverage    # Coverage report
 ```
 

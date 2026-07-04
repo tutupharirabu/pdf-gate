@@ -1,120 +1,90 @@
 /**
  * @module types
  * @description Shared JSDoc type definitions for the pdf-gate package.
- *              These typedefs document the shape of objects flowing through
- *              the Layer 1 (content sanity), Layer 2 (cryptographic signature)
- *              pipeline, and the schema/heuristic configuration system.
+ *              These typedefs document the actual runtime shapes of objects
+ *              flowing through Layer 1 (content sanity), Layer 2 (cryptographic
+ *              signature verification), and the schema configuration system.
+ *
+ *              Synced with runtime as of v0.1.0+security-fixes.
+ *
+ *              NOTE: This file contains only JSDoc @typedef declarations.
+ *              It has no runtime exports.
  */
-
-// NOTE: This file contains only JSDoc @typedef declarations.
-// It has no runtime exports — it serves as the canonical type reference.
 
 /**
  * @typedef {object} ValidationResult
- * @description Top-level result returned by `validate()`.
- * @property {boolean}   valid              – Overall validity (true only when both layers pass).
- * @property {Layer1Result} layer1           – Content sanity-check result.
- * @property {Layer2Result} layer2           – Cryptographic signature verification result.
- * @property {number}    duration           – Total validation wall-clock time in milliseconds
- *                                             (measured via `performance.now()`).
- * @property {string}    fileName           – Original file name (or path) of the validated PDF.
+ * @description Top-level result returned by `validatePDF()`.
+ * @property {'VERIFIED'|'PLAUSIBLE'|'FAILED'} status  – Tri-state validation outcome.
+ * @property {string}             schema              – Schema name used for validation.
+ * @property {string|null}        fileName            – Original file name (or null).
+ * @property {number}             fileSizeKb          – File size in KB (rounded to 1 decimal).
+ * @property {number}             pageCount           – Number of parsed PDF pages.
+ * @property {number}             totalDurationMs     – Total wall-clock time in ms (2 decimals).
+ * @property {string}             timestamp           – ISO-8601 timestamp of the validation run.
+ * @property {Layer1Result}       layer1              – Content sanity-check result.
+ * @property {Layer2Result}       layer2              – Cryptographic signature verification result.
+ * @property {string|null}        failReason          – Human-readable failure reason, or null when VERIFIED.
  */
 
 /**
  * @typedef {object} Layer1Result
- * @description Result of the Layer 1 content sanity check.
- * @property {boolean}        valid          – True when every rule in the schema passed.
- * @property {RuleResult[]}   rules          – Per-rule results.
- * @property {number}         duration       – Layer 1 wall-clock time in milliseconds.
+ * @description Result of the Layer 1 content sanity check (schema-driven field validation).
+ * @property {boolean}            passed              – True when all required rules pass.
+ * @property {string|null}        detectedType        – Schema name detected by fingerprint matching, or null.
+ * @property {string|null}        failReason          – Human-readable reason, or null when passed.
+ * @property {RuleResult[]}       rules               – Per-rule results.
+ * @property {{ passed: boolean, wordCount: number, flags: string[] }} heuristics
+ *                                                     – Heuristic analysis summary.
+ * @property {number}             durationMs          – Layer 1 wall-clock time in ms.
  */
 
 /**
  * @typedef {object} Layer2Result
  * @description Result of the Layer 2 cryptographic signature verification.
- * @property {boolean}        valid          – True when the PDF's digital signature is intact
- *                                             and the signer certificate chains to a trusted root.
- * @property {string|null}    signerName     – Common Name from the signer certificate, or null
- *                                             if no signature is present.
- * @property {string|null}    signerOrg      – Organisation from the signer certificate, or null.
- * @property {Date|null}      signedAt       – Signature timestamp, or null.
- * @property {string|null}    issuer         – Issuing CA distinguished name, or null.
- * @property {string|null}    error          – Human-readable error when `valid === false`.
- * @property {number}          duration      – Layer 2 wall-clock time in milliseconds.
+ * @property {boolean}            hasSignature        – True when at least one digital signature is present.
+ * @property {boolean}            passed              – True when the signature verifies successfully.
+ * @property {string|null}        issuer              – Issuing CA distinguished name, or null.
+ * @property {string|null}        issuedTo            – Subject the certificate was issued to, or null.
+ * @property {string|null}        validFrom           – Certificate validity start, or null.
+ * @property {string|null}        validTo             – Certificate validity end, or null.
+ * @property {boolean}            certExpired         – True when the signer certificate is expired.
+ * @property {boolean}            integrityOk         – True when document integrity is intact.
+ * @property {string|null}        signedAt            – Signature timestamp, or null.
+ * @property {string|null}        failReason          – Human-readable failure reason.
+ * @property {number}             durationMs          – Layer 2 wall-clock time in ms.
  */
 
 /**
  * @typedef {object} RuleResult
- * @description Outcome of a single schema rule evaluated against the PDF.
- * @property {string}  rule       – Rule identifier (matches the key in the SchemaRule map).
- * @property {boolean} pass       – True when the rule passed.
- * @property {string}  message    – Human-readable explanation.
- * @property {number}  duration   – Rule execution time in milliseconds.
+ * @description Outcome of a single schema rule evaluated against a PDF.
+ * @property {string}             id                  – Rule identifier from the schema.
+ * @property {string}             label               – Human-readable rule label.
+ * @property {boolean}            required            – Whether this rule is mandatory.
+ * @property {boolean}            passed              – True when the pattern matched.
+ * @property {string}             found               – Up-to-80-char snippet of matched text, or empty string.
  */
 
 /**
  * @typedef {object} Schema
- * @description Full validation schema definition.
- * @property {string}                   name        – Human-readable schema name
- *                                                     (e.g. "Ijazah S1 – Universitas Indonesia").
- * @property {string}                   version     – Semantic version of the schema.
- * @property {Object<string, SchemaRule>} rules    – Map of rule-id → SchemaRule.
- * @property {HeuristicConfig}          heuristics  – Heuristic analysis configuration.
- */
-
-/**
- * @typedef {object} SchemaRule
- * @description Definition of a single Layer 1 rule.
- * @property {string}              type        – Rule type discriminator.
- *                                               Supported values:
- *                                               'text_match', 'regex', 'count_range',
- *                                               'field_presence', 'anchor', 'forbidden',
- *                                               'page_range'.
- * @property {string|RegExp}       pattern     – Match pattern (string or RegExp).
- * @property {import('./utils/pattern-parser').PatternFlag} [flags] – Regex flags when pattern is a string.
- * @property {string}              [field]     – Target field / label.
- * @property {number}              [min]       – Minimum count (for 'count_range').
- * @property {number}              [max]       – Maximum count (for 'count_range').
- * @property {number}              [minPages]  – Minimum page count (for 'page_range').
- * @property {number}              [maxPages]  – Maximum page count (for 'page_range').
- * @property {string}              description – Human-readable rule description.
- * @property {boolean}             required    – When true, failing this rule invalidates Layer 1.
- */
-
-/**
- * @typedef {object} HeuristicConfig
- * @description Configuration for heuristic (fuzzy) text-matching.
- * @property {boolean}            enabled         – Master switch for heuristic analysis.
- * @property {number}             minConfidence   – Minimum confidence threshold (0.0 – 1.0).
- * @property {number}             maxDistance     – Maximum Levenshtein / Jaro-Winkler distance.
- * @property {string[]}           stopwords       – Tokens ignored during fuzzy matching.
- * @property {Object<string, number>} fieldWeights – Per-field weight multipliers.
+ * @description Full document validation schema.
+ * @property {string}             name                – Schema identifier (e.g. "ijazah").
+ * @property {string}             label               – Human-readable label (e.g. "Ijazah").
+ * @property {RegExp[]}           fingerprints        – Per-document-type fingerprint regexes.
+ * @property {number}             fingerprintMin      – Minimum fingerprint matches to claim detection.
+ * @property {{ minWords: number, maxWords: number }} heuristics
+ *                                                     – Word-count heuristic bounds.
+ * @property {Array<{ id: string, label: string, pattern: RegExp, required: boolean }>} rules
+ *                                                     – Array of field-validation rules.
  */
 
 /**
  * @typedef {object} ValidateOptions
- * @description Options accepted by the main `validate(filePath, options)` function.
- * @property {string}             schemaId     – Schema identifier to use (mandatory).
- * @property {boolean}            [layer2]     – Enable Layer 2 signature verification
- *                                               (default: true).
- * @property {boolean}            [heuristics] – Enable heuristic text matching
- *                                               (default: true).
- * @property {boolean}            [strict]     – When true, unknown/warning-level findings
- *                                               are treated as errors.
- * @property {number}             [timeout]    – Per-layer timeout in milliseconds
- *                                               (default: 30 000).
- * @property {string}             [logLevel]   – Override LOG_LEVEL for this run
- *                                               ('error' | 'warn' | 'info' | 'debug' | 'silent').
- */
-
-/**
- * @typedef {object} GenerateOptions
- * @description Options accepted by `generateReport(result, options)`.
- * @property {('json'|'text'|'html')} format  – Output format (default: 'json').
- * @property {boolean}                 [pretty] – Pretty-print JSON output (default: true).
- * @property {string}                  [output] – File path to write the report to;
- *                                                stdout when omitted.
- * @property {boolean}                 [verbose] – Include per-rule timing and debug info
- *                                                  (default: false).
+ * @description Options accepted by `validatePDF(buffer, options)`.
+ * @property {string|Schema}      schema              – Schema name or custom Schema object (mandatory).
+ * @property {boolean}            [skipLayer2]        – Skip Layer 2 signature verification (default: false).
+ * @property {string}             [fileName]          – Original file name for the result.
+ * @property {string[]}           [trustedIssuers]    – Allowlist of trusted issuer name substrings for
+ *                                                       CA pinning (defense-in-depth).
  */
 
 export {};

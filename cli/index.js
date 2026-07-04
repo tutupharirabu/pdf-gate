@@ -9,18 +9,19 @@
  * @license MIT
  */
 
-import { readFileSync, existsSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { readFileSync, existsSync, writeFileSync, statSync } from 'node:fs';
+import { resolve, basename } from 'node:path';
 import { Command } from 'commander';
 import pc from 'picocolors';
 import { validatePDF, SCHEMAS, registerSchema, loadSchemaFromFile, generateSchema } from '../src/index.js';
+import { MAX_BUFFER_SIZE } from '../src/utils/sanitizer.js';
 
 const program = new Command();
 
 program
   .name('pdf-validate')
   .description('Dual-layer PDF document validator — sanity check + cryptographic signature verification')
-  .version('0.1.0')
+  .version(JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8')).version)
   .argument('[file]', 'Path to the PDF file to validate')
   .option('-s, --schema <name>', 'Schema name or registered custom schema name')
   .option('-f, --schema-file <path...>', 'Load external schema from .json or .js file (repeatable)')
@@ -76,12 +77,23 @@ async function handleValidate(file, options) {
     throw new Error(`File tidak ditemukan: ${filePath}`);
   }
 
-  // Load external schemas
+  // Load external schemas (before reading the PDF)
   if (options.schemaFile) {
     for (const schemaPath of options.schemaFile) {
       const absPath = resolve(schemaPath);
-      await loadSchemaFromFile(absPath);
+      await loadSchemaFromFile(absPath, { allowedRoot: null }); // trusted: operator-supplied CLI path
     }
+  }
+
+  // File size check before reading to prevent OOM
+  const stats = statSync(filePath);
+  if (stats.size > MAX_BUFFER_SIZE) {
+    const sizeMB = (stats.size / 1024 / 1024).toFixed(1);
+    const maxMB = MAX_BUFFER_SIZE / 1024 / 1024;
+    throw new Error(
+      `File terlalu besar (${sizeMB} MB) melebihi batas ${maxMB} MB. ` +
+      'Tolak demi keamanan.',
+    );
   }
 
   const buffer = readFileSync(filePath);
@@ -89,7 +101,7 @@ async function handleValidate(file, options) {
 
   const result = await validatePDF(buffer, {
     schema: options.schema,
-    fileName: filePath.split('/').pop(),
+    fileName: basename(filePath),
     skipLayer2,
   });
 
@@ -152,6 +164,9 @@ async function handleGenerateSchema(options) {
   // Write to file if --output specified
   if (options.output) {
     const outPath = resolve(options.output);
+    if (existsSync(outPath)) {
+      console.log(pc.yellow(`  ⚠  Overwriting existing file: ${outPath}`));
+    }
     const jsonSchema = schemaToJSON(schema);
     writeFileSync(outPath, JSON.stringify(jsonSchema, null, 2), 'utf-8');
     console.log(pc.green(`  ✓ Saved to: ${outPath}`));

@@ -19,6 +19,10 @@ function displayName(name) {
     transkrip: 'Transkrip Nilai',
     sertifikat: 'Sertifikat',
     ktp: 'KTP',
+    'akte-kelahiran': 'Akte Kelahiran',
+    sim: 'SIM',
+    passport: 'Paspor',
+    kk: 'Kartu Keluarga',
   };
   return labels[name] || name;
 }
@@ -60,11 +64,16 @@ export function detectDocumentType(fullText, selectedSchema, allSchemas) {
     }
   }
 
+  // Build dynamic list of known document types from registered schemas
+  const knownTypes = [...allSchemas.keys()]
+    .map((n) => displayName(n))
+    .join(', ');
+
   return {
     passed: false,
     detectedType: null,
     failReason:
-      'Tipe dokumen tidak dikenali - bukan ijazah, transkrip, sertifikat, atau KTP.',
+      'Tipe dokumen tidak dikenali — dikenal: ' + knownTypes + '.',
     matches: selectedMatches,
   };
 }

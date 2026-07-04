@@ -71,6 +71,7 @@ const rules = [
 
 const sim = {
   name: 'sim',
+  label: 'SIM',
   fingerprints,
   fingerprintMin,
   heuristics,

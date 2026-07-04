@@ -10,8 +10,9 @@
  *              Per PRD 4.2 Gate 4 - Field Validation.
  *
  *              **Security hardened**: ReDoS protection via
- *              per-regex timeouts, match-count limits, input
- *              size caps, and malicious pattern detection.
+ *              per-regex loop-based timeouts, match-count limits,
+ *              input size caps, and malicious pattern detection.
+ *              Best-effort — full ReDoS isolation requires Worker threads.
  */
 
 // ── Security Constants ─────────────────────────────────────────────────────────
@@ -73,7 +74,6 @@ function isRegexMalicious(pattern) {
 function safeExec(regex, input) {
   const startTime = Date.now();
   let timedOut = false;
-  let error = null;
   let match = null;
 
   let safeRegex;
@@ -81,21 +81,56 @@ function safeExec(regex, input) {
     safeRegex = new RegExp(regex.source, regex.flags);
     safeRegex.lastIndex = 0;
   } catch (err) {
-    return { match: null, timedOut: false, error: `Invalid regex: ${err.message}` };
+    return { match: null, timedOut: false, error: 'Invalid regex: ' + err.message };
   }
 
   try {
-    match = safeRegex.exec(input);
-    if (Date.now() - startTime > MAX_EXEC_TIME) {
+    let iterations = 0;
+    let stepMatch;
+
+    // Loop-based execution with timeout checks BETWEEN exec calls.
+    // For global/sticky regexes, this provides real protection against
+    // excessive match counts. For non-global single-exec regexes, the
+    // isRegexMalicious() pre-check (nested-quantifier detection) is
+    // the primary defense for single-exec catastrophic backtracking.
+    while ((stepMatch = safeRegex.exec(input)) !== null) {
+      iterations++;
+      match = stepMatch;
+
+      // Match-count limit: abort if too many matches
+      if (iterations >= SAFE_MATCH_LIMIT) {
+        timedOut = true;
+        match = null;
+        break;
+      }
+
+      // Wall-clock timeout: abort if execution takes too long
+      if (Date.now() - startTime > MAX_EXEC_TIME) {
+        timedOut = true;
+        match = null;
+        break;
+      }
+
+      // Prevent infinite loop on zero-length matches
+      if (stepMatch[0].length === 0) {
+        safeRegex.lastIndex++;
+        if (safeRegex.lastIndex > input.length) break;
+      }
+
+      // Non-global/sticky regexes only need one match
+      if (!safeRegex.global && !safeRegex.sticky) break;
+    }
+
+    // Final timeout check
+    if (!timedOut && Date.now() - startTime > MAX_EXEC_TIME) {
       timedOut = true;
       match = null;
     }
   } catch (err) {
-    error = err.message;
-    match = null;
+    return { match: null, timedOut: false, error: err.message };
   }
 
-  return { match, timedOut, error };
+  return { match, timedOut, error: null };
 }
 
 /**

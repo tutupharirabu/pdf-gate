@@ -1,15 +1,21 @@
 {
   "name": "pdf-gate",
   "version": "0.1.0",
-  "description": "Dual-layer PDF document validator — content sanity check + cryptographic signature verification for Indonesian formal documents.",
+  "description": "Dual-layer PDF document validator \u2014 content sanity check + cryptographic signature verification for Indonesian formal documents.",
   "type": "module",
   "license": "MIT",
   "author": "Irfan Zharauri Nanda Sudiyanto",
-  "engines": { "node": ">=20.0.0" },
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "main": "src/index.js",
-  "bin": { "pdf-validate": "./cli/index.js" },
+  "bin": {
+    "pdf-validate": "./cli/index.js"
+  },
   "exports": {
-    ".": { "import": "./src/index.js" },
+    ".": {
+      "import": "./src/index.js"
+    },
     "./schemas": "./src/schemas/index.js"
   },
   "files": [
@@ -18,7 +24,6 @@
     "README.md",
     "LICENSE"
   ],
-  "bundleDependencies": false,
   "keywords": [
     "pdf",
     "validator",
@@ -35,16 +40,21 @@
     "document-verification"
   ],
   "dependencies": {
-    "@ninja-labs/verify-pdf": "^0.3.9",
-    "picocolors": "^1.1.1",
-    "commander": "^11.1.0",
-    "pdfjs-dist": "^4.0.379"
+    "@ninja-labs/verify-pdf": "^1.0.0",
+    "base64-js": "^1.5.1",
+    "commander": "^15.0.0",
+    "ieee754": "^1.2.1",
+    "pdfjs-dist": "^4.0.379",
+    "picocolors": "^1.1.1"
   },
   "devDependencies": {
-    "jest": "^29.7.0"
+    "jest": "^30.4.2"
+  },
+  "overrides": {
+    "node-forge": "^1.4.0"
   },
   "scripts": {
-    "test": "node --experimental-vm-modules node_modules/.bin/jest",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest --forceExit --runInBand",
     "test:watch": "node --experimental-vm-modules node_modules/.bin/jest --watch",
     "test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage",
     "prepublishOnly": "npm test"
@@ -52,5 +62,13 @@
   "jest": {
     "transform": {},
     "testEnvironment": "node"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tutupharirabu/pdf-gate.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tutupharirabu/pdf-gate/issues"
+  },
+  "homepage": "https://github.com/tutupharirabu/pdf-gate#readme"
 }

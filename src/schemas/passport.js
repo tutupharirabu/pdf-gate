@@ -77,6 +77,7 @@ const rules = [
 
 const passport = {
   name: 'passport',
+  label: 'Paspor',
   fingerprints,
   fingerprintMin,
   heuristics,

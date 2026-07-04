@@ -13,7 +13,7 @@
 export const MAX_BUFFER_SIZE = 100 * 1024 * 1024; // 100MB
 
 /** @const {string[]} Whitelist of allowed keys in options objects. */
-const ALLOWED_OPTIONS_KEYS = ['schema', 'skipLayer2', 'fileName'];
+const ALLOWED_OPTIONS_KEYS = ['schema', 'skipLayer2', 'fileName', 'trustedIssuers'];
 
 /** @const {string[]} Forbidden keys that indicate prototype pollution attempts. */
 const FORBIDDEN_KEYS = ['__proto__', 'constructor', 'prototype'];

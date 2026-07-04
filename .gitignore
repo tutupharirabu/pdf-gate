@@ -7,7 +7,9 @@ node_modules/
 coverage/
 dist/
 test/fixtures/*.pdf
+test/*.pdf
 .agents/
 *.heapdump
 *.core
 skills-lock.json
+docs/

@@ -21,7 +21,7 @@ import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
  * a web worker, which simplifies deployment. An empty string tells
  * pdfjs-dist v4 to skip worker loading.
  */
-try { pdfjs.GlobalWorkerOptions.workerSrc = ''; } catch (_) { /* ignore */ }
+try { pdfjs.GlobalWorkerOptions.workerSrc = undefined; pdfjs.GlobalWorkerOptions.workerPort = null; } catch (_) { /* ignore */ }
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -111,6 +111,12 @@ export async function parsePdf(src, options = {}) {
   const timeout = options.timeout ?? DEFAULT_LOAD_TIMEOUT_MS;
   const startTime = performance.now();
 
+  // Convert Buffer to Uint8Array for pdfjs-dist compatibility on Node >=21.
+  // pdfjs-dist v4+ expects Uint8Array, but Node's fs.readFileSync returns Buffer.
+  const data = Buffer.isBuffer(src)
+    ? new Uint8Array(src.buffer, src.byteOffset, src.byteLength)
+    : src;
+
   // -----------------------------------------------------------------------
   // Load the document with a timeout guard
   // -----------------------------------------------------------------------
@@ -118,7 +124,7 @@ export async function parsePdf(src, options = {}) {
   let loadingTask;
 
   try {
-    loadingTask = pdfjs.getDocument(src);
+    loadingTask = pdfjs.getDocument(data);
 
     const doc = await withTimeout(
       loadingTask.promise,
@@ -166,7 +172,7 @@ export async function parsePdf(src, options = {}) {
       }
     }
 
-    const fullText = textParts.join('');
+    const fullText = textParts.join(' ');
     const elapsed = performance.now() - startTime;
 
     // If a logging facility is available, emit a debug line — otherwise
@@ -203,10 +209,21 @@ export async function parsePdf(src, options = {}) {
  * @returns {Promise<T>}
  */
 function withTimeout(promise, ms, message) {
+  let timer;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+  });
   return Promise.race([
-    promise,
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error(message)), ms),
+    promise.then(
+      (result) => {
+        clearTimeout(timer);
+        return result;
+      },
+      (err) => {
+        clearTimeout(timer);
+        throw err;
+      },
     ),
+    timeoutPromise,
   ]);
 }

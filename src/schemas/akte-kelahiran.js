@@ -71,6 +71,7 @@ const rules = [
 
 const akteKelahiran = {
   name: 'akte-kelahiran',
+  label: 'Akte Kelahiran',
   fingerprints,
   fingerprintMin,
   heuristics,

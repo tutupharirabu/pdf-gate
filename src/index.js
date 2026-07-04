@@ -18,14 +18,14 @@ import {
   registerSchema,
   unregisterSchema,
   loadSchemaFromFile,
+  getAllSchemas,
 } from './schemas/index.js';
 import { generateSchema } from './generator/index.js';
 import { sanitizeBuffer, sanitizeOptions, safeRegexTest, MAX_BUFFER_SIZE } from './utils/sanitizer.js';
 
-
 // ── Re-exports ────────────────────────────────────────────────────────────────
 
-export { SCHEMAS, resolveSchema, registerSchema, unregisterSchema, loadSchemaFromFile, generateSchema };
+export { SCHEMAS, resolveSchema, registerSchema, unregisterSchema, loadSchemaFromFile, getAllSchemas, generateSchema };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -39,42 +39,6 @@ export { SCHEMAS, resolveSchema, registerSchema, unregisterSchema, loadSchemaFro
 function assertBuffer(buffer) {
   // sanitizeBuffer covers: type check, pollution guard, size check, zero-length
   sanitizeBuffer(buffer);
-}
-
-/**
- * Timing-safe string comparison to prevent timing side-channel attacks.
- * Uses double HMAC approach via Node.js crypto.timingSafeEqual for
- * constant-time comparison of sensitive values.
- *
- * @param {string} a - First string to compare.
- * @param {string} b - Second string to compare.
- * @returns {boolean} True if strings are equal.
- */
-function timingSafeEqual(a, b) {
-  if (typeof a !== 'string' || typeof b !== 'string') {
-    return false;
-  }
-  const bufA = Buffer.from(a, 'utf8');
-  const bufB = Buffer.from(b, 'utf8');
-  if (bufA.length !== bufB.length) {
-    // Constant-time comparison requires equal-length buffers.
-    // We still do constant-time on padded buffers to avoid leaking length.
-    const maxLen = Math.max(bufA.length, bufB.length);
-    const padA = Buffer.alloc(maxLen, 0);
-    const padB = Buffer.alloc(maxLen, 0);
-    bufA.copy(padA);
-    bufB.copy(padB);
-    try {
-      return require('crypto').timingSafeEqual(padA, padB);
-    } catch (_err) {
-      return false;
-    }
-  }
-  try {
-    return require('crypto').timingSafeEqual(bufA, bufB);
-  } catch (_err) {
-    return false;
-  }
 }
 
 /**
@@ -175,7 +139,7 @@ export async function validatePDF(buffer, options) {
   const layer1Promise = runLayer1(fullText, items, pageCount, schema, SCHEMAS);
   const layer2Promise = skipLayer2
     ? Promise.resolve(skippedLayer2Result())
-    : runLayer2(toBuffer(buffer));
+    : runLayer2(toBuffer(buffer), { trustedIssuers: safeOptions.trustedIssuers });
 
   const [layer1, layer2] = await Promise.all([layer1Promise, layer2Promise]);
 
@@ -213,6 +177,7 @@ export async function validatePDF(buffer, options) {
   };
 }
 
+
 /**
  * Build a FAILED result when PDF parsing itself fails.
  * @param {import('./types.js').Schema} schema
@@ -245,33 +210,5 @@ function buildFailedResult(schema, fileName, bytes, pageCount, layer1, failReaso
     layer2: skippedLayer2Result(),
     failReason,
   };
-
-// ── Process-level security ────────────────────────────────────────────────────
-
-/**
- * Global handler for unhandled promise rejections.
- * Prevents sensitive information leakage by logging a sanitized
- * message instead of the default Node.js behavior (which dumps
- * the full stack trace including potentially sensitive data).
- *
- * Registered at module import time so it activates before any
- * consumer code runs.
- */
-process.on('unhandledRejection', (reason, _promise) => {
-  // Log a sanitized message — never expose raw error details
-  // that could contain file paths, buffer contents, or PII.
-  const msg = reason instanceof Error
-    ? `Unhandled rejection: ${reason.message}`
-    : 'Unhandled rejection (non-Error reason) — details disembunyikan demi keamanan.';
-
-  // Use console.error for observability but NEVER include stack traces
-  // in production to prevent information leakage through logs.
-  if (process.env.NODE_ENV !== 'production') {
-    console.error(msg);
-  }
-
-  // In production, we silently swallow to avoid leaking any details.
-  // The consumer is responsible for their own error monitoring.
-});
-
 }
+

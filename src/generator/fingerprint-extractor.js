@@ -71,15 +71,7 @@ function distinctivenessScore(phrase, freq) {
   return score;
 }
 
-/**
- * Escape regex special characters.
- *
- * @param {string} s
- * @returns {string}
- */
-function escapeRegex(s) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+import { escapeRegex } from '../utils/pattern-parser.js';
 
 /**
  * Extract distinctive fingerprints from document text.

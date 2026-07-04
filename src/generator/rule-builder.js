@@ -4,15 +4,7 @@
  *              objects per PRD §3.4 Schema shape.
  */
 
-/**
- * Escape special regex characters in a string.
- *
- * @param {string} s
- * @returns {string}
- */
-function escapeRegex(s) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+import { escapeRegex } from '../utils/pattern-parser.js';
 
 /**
  * Produce a short, unique, safe ID from a label.
