@@ -21,11 +21,29 @@ import {
   getAllSchemas,
 } from './schemas/index.js';
 import { generateSchema } from './generator/index.js';
-import { sanitizeBuffer, sanitizeOptions, safeRegexTest, MAX_BUFFER_SIZE } from './utils/sanitizer.js';
+import { sanitizeBuffer, sanitizeOptions, safeRegexTest, MAX_BUFFER_SIZE, isSafeFilePath } from './utils/sanitizer.js';
+import { ZERO_TRUST_MODE, assertNoNetwork, zeroBuffer, validateDependencies, createSecureContext } from './utils/zero-trust.js';
 
 // ── Re-exports ────────────────────────────────────────────────────────────────
 
-export { SCHEMAS, resolveSchema, registerSchema, unregisterSchema, loadSchemaFromFile, getAllSchemas, generateSchema };
+export {
+  SCHEMAS,
+  resolveSchema,
+  registerSchema,
+  unregisterSchema,
+  loadSchemaFromFile,
+  getAllSchemas,
+  generateSchema,
+  // Zero-trust and sanitization exports
+  ZERO_TRUST_MODE,
+  assertNoNetwork,
+  zeroBuffer,
+  validateDependencies,
+  createSecureContext,
+  isSafeFilePath,
+  MAX_BUFFER_SIZE,
+};
+
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 

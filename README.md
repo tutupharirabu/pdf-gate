@@ -25,7 +25,7 @@
 ## 🚀 Instalasi
 
 ```bash
-npm install pdf-gate
+npm install @tutupharirabu/pdf-gate
 ```
 
 **Requirement**: Node.js >= 22.0.0
@@ -62,7 +62,7 @@ pdf-validate --list-schemas
 ### API
 
 ```js
-import { validatePDF } from 'pdf-gate';
+import { validatePDF } from '@tutupharirabu/pdf-gate';
 import { readFileSync } from 'fs';
 
 const buffer = readFileSync('./ijazah.pdf');
