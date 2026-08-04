@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>pdf-gate — Validator PDF Dual-Layer</title>
+  <!-- Google Fonts: Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="decor-glow glow-1"></div>
+  <div class="decor-glow glow-2"></div>
+
+  <main class="app-container">
+    <header class="app-header">
+      <div class="logo">
+        <span class="logo-text">pdf-gate</span>
+        <span class="badge">v0.1.0</span>
+      </div>
+      <h1>Dual-Layer PDF Validator</h1>
+      <p class="subtitle">Validasi integritas konten (Layer 1) & tanda tangan digital kriptografis (Layer 2) untuk dokumen formal Indonesia.</p>
+    </header>
+
+    <!-- Upload Section -->
+    <section class="card upload-card" id="upload-section">
+      <form id="upload-form" class="upload-form">
+        <div class="form-group">
+          <label for="schema-select" class="form-label">Pilih Jenis Dokumen</label>
+          <div class="select-wrapper">
+            <select id="schema-select" name="schema" required>
+              <option value="" disabled selected>Memuat skema...</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group checkbox-group">
+          <label class="toggle-switch">
+            <input type="checkbox" id="skip-layer2" name="skipLayer2">
+            <span class="slider"></span>
+          </label>
+          <span class="checkbox-label">Lewati Verifikasi Kriptografis (Layer 2)</span>
+        </div>
+
+        <div class="drag-zone" id="drag-zone">
+          <input type="file" id="pdf-file" name="pdf" accept=".pdf" class="file-input" required>
+          <div class="drag-content">
+            <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            <h3>Tarik & Lepaskan File PDF</h3>
+            <p>atau klik untuk menelusuri berkas dari komputer Anda</p>
+            <span class="file-limit">Maksimum ukuran file: 20 MB</span>
+          </div>
+          <div class="file-selected-info" id="file-selected-info" style="display: none;">
+            <svg class="file-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span class="file-name" id="selected-file-name">filename.pdf</span>
+            <button type="button" class="btn-remove-file" id="btn-remove-file">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-submit" id="btn-submit" disabled>Mulai Validasi</button>
+      </form>
+    </section>
+
+    <!-- Loading State -->
+    <section class="card loading-card" id="loading-section" style="display: none;">
+      <div class="loader-spinner">
+        <div class="double-bounce1"></div>
+        <div class="double-bounce2"></div>
+      </div>
+      <h2>Memproses Dokumen...</h2>
+      <p>Melakukan parsing teks, pencocokan aturan skema, dan verifikasi tanda tangan kriptografis.</p>
+    </section>
+
+    <!-- Result Section -->
+    <section class="result-section" id="result-section" style="display: none;">
+      <div class="result-header-card" id="result-status-card">
+        <div class="status-icon-wrapper" id="status-icon">
+          <!-- Icon injected dynamically -->
+        </div>
+        <h2 id="status-text">STATUS</h2>
+        <p id="status-description">Deskripsi hasil validasi</p>
+      </div>
+
+      <!-- File Meta Grid -->
+      <div class="meta-grid">
+        <div class="card meta-item">
+          <span class="meta-label">Nama Berkas</span>
+          <span class="meta-value" id="res-file-name">Ijazah.pdf</span>
+        </div>
+        <div class="card meta-item">
+          <span class="meta-label">Ukuran Berkas</span>
+          <span class="meta-value" id="res-file-size">1.2 MB</span>
+        </div>
+        <div class="card meta-item">
+          <span class="meta-label">Jumlah Halaman</span>
+          <span class="meta-value" id="res-pages">1 Halaman</span>
+        </div>
+        <div class="card meta-item">
+          <span class="meta-label">Waktu Validasi</span>
+          <span class="meta-value" id="res-duration">45ms</span>
+        </div>
+      </div>
+
+      <!-- Layers Grid -->
+      <div class="layers-grid">
+        <!-- Layer 1 Card -->
+        <div class="card layer-card">
+          <div class="layer-header">
+            <h3>Layer 1: Content Sanity Check</h3>
+            <span class="layer-status-badge" id="l1-badge">PASSED</span>
+          </div>
+          <div class="layer-body">
+            <div class="heuristic-summary" id="heuristic-summary">
+              <!-- Heuristic text injected here -->
+            </div>
+            
+            <h4 class="rules-title">Evaluasi Aturan Skema</h4>
+            <ul class="rules-list" id="l1-rules-list">
+              <!-- Rules injected here -->
+            </ul>
+          </div>
+        </div>
+
+        <!-- Layer 2 Card -->
+        <div class="card layer-card">
+          <div class="layer-header">
+            <h3>Layer 2: Digital Signature</h3>
+            <span class="layer-status-badge" id="l2-badge">VERIFIED</span>
+          </div>
+          <div class="layer-body" id="l2-body">
+            <!-- Signature status info injected here -->
+          </div>
+        </div>
+      </div>
+
+      <div class="actions-row">
+        <button class="btn-secondary" id="btn-restart">Validasi Dokumen Lain</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <p>Dikembangkan dengan prinsip Zero-Trust Security. Pemrosesan lokal & aman.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

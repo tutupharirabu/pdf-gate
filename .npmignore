@@ -1,11 +1,12 @@
 src/**/*.test.js
 test/
 examples/
+demo/
 .git/
 .github/
+.commandcode/
 *.log
 .*
-!./.gitignore
 coverage/
 .agents/
 node_modules/.cache/

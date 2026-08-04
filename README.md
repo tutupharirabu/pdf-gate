@@ -24,6 +24,17 @@
 
 ## 🚀 Instalasi
 
+> **⚠️ Registry GitHub Packages**: Paket ini dipublikasikan ke **GitHub Packages**
+> (`@tutupharirabu:registry=https://npm.pkg.github.com`), bukan npmjs.com.
+> Konsumen harus menyiapkan file `.npmrc` dengan registry + token autentikasi GitHub Packages:
+>
+> ```ini
+> @tutupharirabu:registry=https://npm.pkg.github.com
+> //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+> ```
+>
+> Setelah itu, install seperti biasa:
+
 ```bash
 npm install @tutupharirabu/pdf-gate
 ```
@@ -225,7 +236,7 @@ Engine mendeteksi **4 pola layout**: colon-separated, tabular/box, stacked label
 
 ```bash
 npm install
-npm test                 # Run all tests (7 suites, 87 tests)
+npm test                 # Run all tests (9 suites, 99 tests)
 npm run test:coverage    # Coverage report
 ```
 
@@ -244,8 +255,10 @@ pdf-gate/
 │   ├── schemas/               # 8 built-in schemas + registry
 │   └── utils/                 # Security, parser, logger, pattern
 ├── cli/index.js               # CLI (picocolors, commander)
+├── demo/                      # Demo server (Express + multer)
 ├── examples/                  # Custom schema examples
-├── test/                      # 5 test suites
+├── test/                      # 9 test suites
+├── .github/workflows/ci.yml   # CI (typecheck + tests + pack check)
 ├── LICENSE                    # MIT
 └── package.json
 ```

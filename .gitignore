@@ -6,10 +6,12 @@ node_modules/
 *.swo
 coverage/
 dist/
-test/fixtures/*.pdf
-test/*.pdf
 .agents/
 *.heapdump
 *.core
 skills-lock.json
-docs/
+
+# Personal agent/tooling artifacts (not part of the package)
+.claude/
+.commandcode/
+__probe__.js
