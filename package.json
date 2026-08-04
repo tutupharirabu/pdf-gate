@@ -55,7 +55,8 @@
     "typescript": "^5.7.3"
   },
   "overrides": {
-    "node-forge": "^1.4.0"
+    "node-forge": "^1.4.0",
+    "brace-expansion": "^2.0.2"
   },
   "scripts": {
     "test": "node --experimental-vm-modules node_modules/.bin/jest --forceExit --runInBand",
