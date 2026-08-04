@@ -15,3 +15,7 @@ skills-lock.json
 .claude/
 .commandcode/
 __probe__.js
+
+# Test fixtures contain PII (real documents) — keep them local-only, never commit
+test/*.pdf
+test/fixtures/*.pdf
