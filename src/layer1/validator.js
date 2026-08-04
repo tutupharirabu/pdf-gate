@@ -12,7 +12,10 @@
  *              **Security hardened**: ReDoS protection via
  *              per-regex loop-based timeouts, match-count limits,
  *              input size caps, and malicious pattern detection.
- *              Best-effort — full ReDoS isolation requires Worker threads.
+ *              Best-effort — full ReDoS isolation requires Worker threads,
+ *              because a single catastrophic `exec()` cannot be interrupted
+ *              from JavaScript; it is only detected (and reported as timed out)
+ *              once it returns.
  */
 
 // ── Security Constants ─────────────────────────────────────────────────────────
@@ -50,13 +53,21 @@ function truncate(str, maxLen) {
  * - `(a*)*`  — nested star quantifiers
  * - `(a+)*`  — mixed nested quantifiers
  *
+ * And alternation inside a group followed by a quantifier, e.g.:
+ * - `(a|a)+` — ambiguous alternation, repeated
+ * - `(a|aa)*` — varying-length alternatives, repeated
+ *
  * @param {RegExp|string} pattern - The regex pattern to inspect.
  * @returns {boolean} `true` if the pattern looks malicious.
  */
-function isRegexMalicious(pattern) {
+export function isRegexMalicious(pattern) {
   try {
     const src = typeof pattern === 'string' ? pattern : pattern.source;
-    return /\([^)]*[+*][^)]*\)[+*]/.test(src);
+    // Nested quantifiers: (a+)+, (a*)*, (a+)*
+    if (/\([^)]*[+*][^)]*\)[+*]/.test(src)) return true;
+    // Alternation-in-group followed by a quantifier: (a|a)+, (a|aa)*
+    if (/\([^)]*\|[^)]*\)[+*]/.test(src)) return true;
+    return false;
   } catch (_err) {
     return true;
   }
@@ -66,6 +77,12 @@ function isRegexMalicious(pattern) {
  * Execute a regex against input with ReDoS protection.
  * Wraps each `regex.exec()` call with a wall-clock timeout guard
  * and a match-count limit.
+ *
+ * **Isolation caveat:** the timeout is only enforced *between* exec() calls
+ * and after the final exec() returns. A single catastrophic-backtracking
+ * exec() on a non-global regex blocks the event loop until it completes;
+ * it is then reported as `timedOut`. True isolation from hostile patterns
+ * requires Worker threads.
  *
  * @param {RegExp} regex - The regex to execute.
  * @param {string} input - The text to search.
@@ -81,7 +98,7 @@ function safeExec(regex, input) {
     safeRegex = new RegExp(regex.source, regex.flags);
     safeRegex.lastIndex = 0;
   } catch (err) {
-    return { match: null, timedOut: false, error: 'Invalid regex: ' + err.message };
+    return { match: null, timedOut: false, error: 'Invalid regex: ' + (err instanceof Error ? err.message : String(err)) };
   }
 
   try {
@@ -127,7 +144,7 @@ function safeExec(regex, input) {
       match = null;
     }
   } catch (err) {
-    return { match: null, timedOut: false, error: err.message };
+    return { match: null, timedOut: false, error: err instanceof Error ? err.message : String(err) };
   }
 
   return { match, timedOut, error: null };

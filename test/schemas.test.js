@@ -62,7 +62,7 @@ describe('resolveSchema', () => {
   test('resolves ktp by name', () => {
     const schema = resolveSchema('ktp');
     expect(schema.name).toBe('ktp');
-    expect(schema.rules.find(r => r.id === 'nik').required).toBe(true);
+    expect(/** @type {import('../src/types.js').SchemaRule} */ (schema.rules.find(r => r.id === 'nik')).required).toBe(true);
   });
 
   test('throws for invalid schema name', () => {
@@ -77,7 +77,7 @@ describe('resolveSchema', () => {
   });
 
   test('throws for invalid custom schema object (missing name)', () => {
-    expect(() => resolveSchema({ rules: [] }))
+    expect(() => resolveSchema(/** @type {any} */ ({ rules: [] })))
       .toThrow(/name/);
   });
 
@@ -101,7 +101,7 @@ describe('registerSchema / unregisterSchema', () => {
   test('registers a custom schema successfully', () => {
     const schema = registerSchema(validCustomSchema());
     expect(SCHEMAS.has('test-custom')).toBe(true);
-    expect(SCHEMAS.get('test-custom').name).toBe('test-custom');
+    expect(/** @type {import('../src/types.js').Schema} */ (SCHEMAS.get('test-custom')).name).toBe('test-custom');
   });
 
   test('throws when registering duplicate custom schema name', () => {
@@ -129,7 +129,7 @@ describe('registerSchema / unregisterSchema', () => {
   });
 
   test('parses string patterns on registration', () => {
-    const schema = registerSchema({
+    const schema = registerSchema(/** @type {any} */ ({
       name: 'test-pattern',
       label: 'Test Patterns',
       fingerprints: ['/test/i', 'dokumen'],
@@ -139,10 +139,11 @@ describe('registerSchema / unregisterSchema', () => {
         { id: 'r1', label: 'R1', pattern: '/\\d{4}/', required: true },
         { id: 'r2', label: 'R2', pattern: 'plain text', required: false },
       ],
-    });
+    }));
 
     expect(SCHEMAS.has('test-pattern')).toBe(true);
     const stored = SCHEMAS.get('test-pattern');
+    if (!stored) throw new Error('fixture missing: test-pattern');
     expect(stored.fingerprints[0]).toBeInstanceOf(RegExp);
     expect(stored.fingerprints[1]).toBeInstanceOf(RegExp);
     expect(stored.rules[0].pattern).toBeInstanceOf(RegExp);
@@ -161,6 +162,7 @@ describe('built-in schemas integrity', () => {
     test(`${name} schema has valid structure`, () => {
       const schema = SCHEMAS.get(name);
       expect(schema).toBeDefined();
+      if (!schema) throw new Error(`fixture missing: schema "${name}"`);
       expect(schema.name).toBe(name);
       expect(typeof schema.label).toBe('string');
       expect(Array.isArray(schema.fingerprints)).toBe(true);

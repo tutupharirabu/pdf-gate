@@ -73,7 +73,7 @@ export function parsePattern(raw) {
       return new RegExp(body, flags);
     } catch (err) {
       throw new SyntaxError(
-        `Invalid regex body in pattern "${trimmed}": ${err.message}`,
+        `Invalid regex body in pattern "${trimmed}": ${err instanceof Error ? err.message : String(err)}`,
       );
     }
   }
@@ -85,7 +85,7 @@ export function parsePattern(raw) {
     return new RegExp(escapeRegex(trimmed), 'i');
   } catch (err) {
     throw new SyntaxError(
-      `Failed to compile pattern "${trimmed}": ${err.message}`,
+      `Failed to compile pattern "${trimmed}": ${err instanceof Error ? err.message : String(err)}`,
     );
   }
 }

@@ -101,6 +101,9 @@ export async function validatePDF(buffer, options) {
   const t0 = performance.now();
   assertBuffer(buffer);
 
+  // Calculate size before any parsing detaches the buffer
+  const fileSizeKb = Math.round((buffer.length / 1024) * 10) / 10;
+
   // ── Options sanitization & prototype pollution guard ──────────────
   if (!options || !options.schema) {
     throw new TypeError('options.schema wajib diisi — nama schema atau object schema kustom.');
@@ -147,14 +150,16 @@ export async function validatePDF(buffer, options) {
   try {
     parseResult = await parsePdf(buffer);
   } catch (err) {
-    const failReason = `Gagal membaca PDF: ${err.message}. Pastikan file tidak corrupt atau terenkripsi.`;
+    const failReason = `Gagal membaca PDF: ${err instanceof Error ? err.message : String(err)}. Pastikan file tidak corrupt atau terenkripsi.`;
     return buildFailedResult(schema, safeOptions.fileName || null, buffer.length, 0, null, failReason, t0);
   }
 
   const { fullText, items, pageCount } = parseResult;
 
   // 2. Run Layer 1 and Layer 2 in PARALLEL
+  /** @type {Promise<import('./types.js').Layer1Result>} */
   const layer1Promise = runLayer1(fullText, items, pageCount, schema, SCHEMAS);
+  /** @type {Promise<import('./types.js').Layer2Result>} */
   const layer2Promise = skipLayer2
     ? Promise.resolve(skippedLayer2Result())
     : runLayer2(toBuffer(buffer), { trustedIssuers: safeOptions.trustedIssuers });
@@ -162,6 +167,7 @@ export async function validatePDF(buffer, options) {
   const [layer1, layer2] = await Promise.all([layer1Promise, layer2Promise]);
 
   // 3. Decision tree (PRD §4.1)
+  /** @type {'VERIFIED'|'PLAUSIBLE'|'FAILED'} */
   let status;
   let failReason = null;
 
@@ -185,7 +191,7 @@ export async function validatePDF(buffer, options) {
     status,
     schema: schema.name,
     fileName: safeOptions.fileName || null,
-    fileSizeKb: Math.round((buffer.length / 1024) * 10) / 10,
+    fileSizeKb,
     pageCount,
     totalDurationMs,
     timestamp: new Date().toISOString(),

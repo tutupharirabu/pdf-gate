@@ -11,20 +11,22 @@
  *              forged/untrusted certificates.
  */
 
+// @ts-expect-error - @ninja-labs/verify-pdf ships no type declarations (implicit any)
 import verifyPDF from '@ninja-labs/verify-pdf';
 
 /**
  * Run Layer 2 PDF digital-signature verification.
  *
  * @param {Buffer} pdfBuffer - Raw PDF bytes.
- * @param {object} [options={}]
- * @param {string[]} [options.trustedIssuers] - Optional allowlist of trusted
- *        issuer name substrings. When set, signatures from issuers NOT matching
- *        any entry are rejected (defense-in-depth / trusted-CA pinning).
+ * @param {{ trustedIssuers?: string[] }} [options={}] - Optional options.
+ *        When `options.trustedIssuers` is set (allowlist of issuer name
+ *        substrings), signatures from issuers NOT matching any entry are
+ *        rejected (defense-in-depth / trusted-CA pinning).
  * @returns {Promise<import('../types.js').Layer2Result>}
  */
 export async function runLayer2(pdfBuffer, options = {}) {
   const t0 = performance.now();
+  /** @type {import('../types.js').Layer2Result} */
   const result = {
     hasSignature: false,
     passed: false,
@@ -40,8 +42,9 @@ export async function runLayer2(pdfBuffer, options = {}) {
   };
 
   // ── Defense-in-depth: trusted-CA pinning allowlist ────────────────────
-  const trustedIssuers = Array.isArray(options && options.trustedIssuers)
-    ? options.trustedIssuers.filter((s) => typeof s === 'string' && s.length > 0)
+  const optIssuers = options && options.trustedIssuers;
+  const trustedIssuers = Array.isArray(optIssuers)
+    ? optIssuers.filter((s) => typeof s === 'string' && s.length > 0)
     : null;
 
   let verifyOutput;
@@ -50,7 +53,7 @@ export async function runLayer2(pdfBuffer, options = {}) {
   try {
     verifyOutput = await verifyPDF(pdfBuffer);
   } catch (err) {
-    result.failReason = err.message;
+    result.failReason = err instanceof Error ? err.message : String(err);
     result.durationMs = Math.round(performance.now() - t0);
     return result;
   }

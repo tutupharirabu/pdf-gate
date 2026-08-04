@@ -9,26 +9,6 @@
  */
 
 /**
- * Compute the estimated page height from text items on a given page.
- * Uses the maximum (y + height) across items as the page height.
- * Falls back to 792 (standard US Letter) when no items exist.
- *
- * @param {Array<{y: number, page: number, height: number}>} textItems
- * @param {number} pageNum
- * @returns {number}
- */
-function getPageHeight(textItems, pageNum) {
-  let maxY = 0;
-  for (const item of textItems) {
-    if (item.page === pageNum) {
-      const bottom = item.y + (item.height || 12);
-      if (bottom > maxY) maxY = bottom;
-    }
-  }
-  return maxY > 0 ? maxY : 792;
-}
-
-/**
  * Compute the standard deviation of an array of numbers.
  *
  * @param {number[]} values
@@ -47,8 +27,10 @@ function stdDev(values) {
  * Checks performed:
  * 1. Word count must fall within schema.heuristics.minWords - maxWords.
  * 2. Spatial distribution: must have text in the top zone
- *    (normalised Y < 0.25) AND bottom zone (normalised Y > 0.75)
- *    on at least one page.
+ *    (normalised Y > 0.75) AND bottom zone (normalised Y < 0.25)
+ *    on at least one page. pdfjs-dist reports Y coordinates with a
+ *    bottom-left origin, so LARGE Y values are the visual TOP of the
+ *    page and SMALL Y values are the visual BOTTOM.
  * 3. Anomaly detection: if the standard deviation of normalised Y
  *    positions is below 0.05 with more than 20 words, flag as
  *    suspicious (possible scanned/image-only PDF with uniform
@@ -66,6 +48,7 @@ function stdDev(values) {
  * }}
  */
 export function runHeuristics(fullText, textItems, schema) {
+  /** @type {string[]} */
   const flags = [];
   const { minWords, maxWords } = schema.heuristics;
 
@@ -89,29 +72,50 @@ export function runHeuristics(fullText, textItems, schema) {
   // ------------------------------------------------------------------
   // 2. Spatial distribution check (per-page normalised Y zones)
   // ------------------------------------------------------------------
-  // Collect page numbers present in textItems.
-  const pages = new Set(textItems.map((t) => t.page));
+  // pdfjs-dist Y coordinates use a bottom-left origin, so large y values
+  // are the visual TOP of the page and small y values are the BOTTOM.
+  //
+  // Single pass: bucket items per page and track each page's estimated
+  // height (max y + height) in the same iteration — avoids the O(n²)
+  // per-page `filter()` over all items.
+  /** @type {Map<number, Array<{y: number, height: number}>>} */
+  const itemsByPage = new Map();
+  /** @type {Map<number, number>} */
+  const pageMaxY = new Map();
+
+  for (const item of textItems) {
+    let pageItems = itemsByPage.get(item.page);
+    if (!pageItems) {
+      pageItems = [];
+      itemsByPage.set(item.page, pageItems);
+    }
+    pageItems.push(item);
+
+    const bottom = item.y + (item.height || 12);
+    const currentMax = pageMaxY.get(item.page) ?? 0;
+    if (bottom > currentMax) pageMaxY.set(item.page, bottom);
+  }
+
   let hasTopZone = false;
   let hasBottomZone = false;
   const allNormalizedY = [];
 
-  for (const pageNum of pages) {
-    const pageHeight = getPageHeight(textItems, pageNum);
-    const pageItems = textItems.filter((t) => t.page === pageNum);
+  for (const [pageNum, pageItems] of itemsByPage) {
+    const pageHeight = pageMaxY.get(pageNum) ?? 792;
 
     for (const item of pageItems) {
       const yNorm = item.y / pageHeight;
       allNormalizedY.push(yNorm);
 
-      if (yNorm < 0.25) hasTopZone = true;
-      if (yNorm > 0.75) hasBottomZone = true;
+      if (yNorm > 0.75) hasTopZone = true;
+      if (yNorm < 0.25) hasBottomZone = true;
     }
   }
 
   if (!hasTopZone || !hasBottomZone) {
     const missing = [];
-    if (!hasTopZone) missing.push('atas (Y < 0.25)');
-    if (!hasBottomZone) missing.push('bawah (Y > 0.75)');
+    if (!hasTopZone) missing.push('atas (Y > 0.75)');
+    if (!hasBottomZone) missing.push('bawah (Y < 0.25)');
     return {
       passed: false,
       wordCount,

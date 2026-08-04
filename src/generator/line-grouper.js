@@ -23,6 +23,12 @@
  */
 
 /**
+ * @typedef {Object} LineAccumulator
+ * @property {number} y
+ * @property {TextItem[]} items
+ */
+
+/**
  * Group text items into lines by Y-coordinate.
  *
  * @param {TextItem[]} textItems - Parsed PDF text items.
@@ -50,6 +56,7 @@ export function groupTextByLines(textItems, tolerance = 2) {
     // Sort by Y descending (top of page = higher Y in PDF coordinate space)
     const sorted = [...pageItems].sort((a, b) => b.y - a.y);
 
+    /** @type {LineAccumulator[]} */
     const lines = [];
     for (const item of sorted) {
       let placed = false;
@@ -71,12 +78,15 @@ export function groupTextByLines(textItems, tolerance = 2) {
     // Sort each line's items by X-coordinate (left to right)
     for (const line of lines) {
       line.items.sort((a, b) => a.x - b.x);
-      line.page = page;
-      line.fullText = line.items
-        .map((it) => it.str)
-        .join(' ')
-        .trim();
-      allLines.push(line);
+      allLines.push({
+        page,
+        y: line.y,
+        items: line.items,
+        fullText: line.items
+          .map((it) => it.str)
+          .join(' ')
+          .trim(),
+      });
     }
   }
 

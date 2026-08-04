@@ -17,11 +17,17 @@ import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 // ---------------------------------------------------------------------------
 
 /**
- * In Node.js we configure pdfjs-dist to run synchronously without
- * a web worker, which simplifies deployment. An empty string tells
- * pdfjs-dist v4 to skip worker loading.
+ * In Node.js, pdfjs-dist v4 runs without a real worker: its static
+ * initializer defaults `workerSrc` to `./pdf.worker.mjs` (relative to the
+ * pdfjs module) and uses an in-thread "fake worker". We keep that default
+ * explicitly (a non-empty string is required — an empty value makes the
+ * fake-worker loader throw) and pin `workerPort` to null so no real worker
+ * is ever spawned.
  */
-try { pdfjs.GlobalWorkerOptions.workerSrc = undefined; pdfjs.GlobalWorkerOptions.workerPort = null; } catch (_) { /* ignore */ }
+try {
+  pdfjs.GlobalWorkerOptions.workerSrc = './pdf.worker.mjs';
+  pdfjs.GlobalWorkerOptions.workerPort = null;
+} catch (_) { /* ignore */ }
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -32,6 +38,24 @@ try { pdfjs.GlobalWorkerOptions.workerSrc = undefined; pdfjs.GlobalWorkerOptions
  * @type {number}
  */
 const DEFAULT_LOAD_TIMEOUT_MS = 30_000;
+
+/**
+ * Timeout for extracting a single page's text content (15 s).
+ * @type {number}
+ */
+const PAGE_TIMEOUT_MS = 15_000;
+
+/**
+ * Maximum number of pages to extract before aborting (security cap).
+ * @type {number}
+ */
+const MAX_PAGES = 200;
+
+/**
+ * Maximum number of text items to collect before aborting (security cap).
+ * @type {number}
+ */
+const MAX_ITEMS = 100_000;
 
 // ---------------------------------------------------------------------------
 // Error catalogue (verbatim from PRD §9)
@@ -45,6 +69,17 @@ const ERR_ENCRYPTED =
 
 const ERR_LOAD_TIMEOUT =
   'PDF parsing failed: Document loading timed out. The file may be too large or the parser may be stuck.';
+
+const ERR_PAGE_TIMEOUT =
+  'Page extraction timed out. The file may be too large or the parser may be stuck.';
+
+const ERR_TOO_MANY_PAGES =
+  `Document exceeds the maximum allowed page count (${MAX_PAGES}). ` +
+  'Reject for security — the document is too large.';
+
+const ERR_TOO_MANY_ITEMS =
+  `Document exceeds the maximum allowed text item count (${MAX_ITEMS}). ` +
+  'Reject for security — the document is too large.';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -124,7 +159,21 @@ export async function parsePdf(src, options = {}) {
   let loadingTask;
 
   try {
-    loadingTask = pdfjs.getDocument(data);
+    // Pass document params explicitly so we can pin `standardFontDataUrl` to an
+    // empty string: pdfjs-dist treats the parameter as provided and never
+    // attempts an outbound network fetch for standard font files (zero-trust:
+    // no network during parsing). NOTE: pdfjs may still print a console warning
+    // ("Ensure that the `standardFontDataUrl` API parameter is provided") for
+    // documents that use standard fonts (Helvetica etc.). That is expected and
+    // harmless — font data is only needed for RENDERING, never for text
+    // extraction, so validation results are unaffected. Loading fonts from a
+    // file:// URL is not possible in Node (fetch does not support file:).
+    const docParams =
+      data instanceof URL || typeof data === 'string'
+        ? { url: data, standardFontDataUrl: '' }
+        : { data, standardFontDataUrl: '' };
+
+    loadingTask = pdfjs.getDocument(docParams);
 
     const doc = await withTimeout(
       loadingTask.promise,
@@ -136,14 +185,20 @@ export async function parsePdf(src, options = {}) {
     // Walk pages and collect text items
     // ---------------------------------------------------------------------
 
+    // Security cap: refuse to walk documents with an excessive page count.
+    if (doc.numPages > MAX_PAGES) {
+      throw new Error(ERR_TOO_MANY_PAGES);
+    }
+
     /** @type {Array<{ str: string, x: number, y: number, page: number, width: number, height: number }>} */
     const items = [];
     /** @type {string[]} */
     const textParts = [];
 
     for (let pageNum = 1; pageNum <= doc.numPages; pageNum++) {
-      const page = await doc.getPage(pageNum);
-      const textContent = await page.getTextContent();
+      // Each page extraction is individually time-guarded.
+      const page = await withTimeout(doc.getPage(pageNum), PAGE_TIMEOUT_MS, ERR_PAGE_TIMEOUT);
+      const textContent = await withTimeout(page.getTextContent(), PAGE_TIMEOUT_MS, ERR_PAGE_TIMEOUT);
 
       if (textParts.length > 0) {
         // Insert a newline separator between pages.
@@ -153,8 +208,15 @@ export async function parsePdf(src, options = {}) {
       for (const item of textContent.items) {
         // pdfjs-dist v4 items may carry `str`, `dir`, `width`, `height`,
         // and `transform` (an array from which we derive x, y).
+        // TextMarkedContent entries carry no text — skip them.
+        if (!('str' in item)) continue;
         const str = item.str ?? '';
         if (str.length === 0) continue;
+
+        // Security cap: stop collecting once the item budget is exhausted.
+        if (items.length >= MAX_ITEMS) {
+          throw new Error(ERR_TOO_MANY_ITEMS);
+        }
 
         let x = 0;
         let y = 0;
@@ -209,6 +271,7 @@ export async function parsePdf(src, options = {}) {
  * @returns {Promise<T>}
  */
 function withTimeout(promise, ms, message) {
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
   let timer;
   const timeoutPromise = new Promise((_, reject) => {
     timer = setTimeout(() => reject(new Error(message)), ms);
@@ -216,11 +279,11 @@ function withTimeout(promise, ms, message) {
   return Promise.race([
     promise.then(
       (result) => {
-        clearTimeout(timer);
+        if (timer !== undefined) clearTimeout(timer);
         return result;
       },
       (err) => {
-        clearTimeout(timer);
+        if (timer !== undefined) clearTimeout(timer);
         throw err;
       },
     ),

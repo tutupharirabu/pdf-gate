@@ -13,6 +13,11 @@ const ijazahSchema = SCHEMAS.get('ijazah');
 const transkripSchema = SCHEMAS.get('transkrip');
 const ktpSchema = SCHEMAS.get('ktp');
 
+// Guard: these fixtures are required by every test below.
+if (!ijazahSchema || !transkripSchema || !ktpSchema) {
+  throw new Error('fixture missing: built-in schemas tidak terdaftar di SCHEMAS');
+}
+
 const IJAZAH_TEXT = 'KEMENTERIAN PENDIDIKAN IJAZAH No: 1234/UN/DIP/2024 Dinyatakan bahwa: Nama : Ahmad Fauzi Rahman NIM  : 20190001 Program Studi : Teknik Informatika Telah menyelesaikan program sarjana dan dinyatakan lulus pada tanggal 15 Juli 2024 Gelar : Sarjana Komputer Rektor : Universitas Teknologi Indonesia Dekan : Fakultas Ilmu Komputer';
 
 const SERTIFIKAT_TEXT = 'SERTIFIKAT Diberikan kepada Nama Ahmad Fauzi Rahman Telah mengikuti pelatihan Full Stack Web Development Diselenggarakan oleh Lembaga Training Indonesia Tanggal 10 Januari 2024 Dinyatakan kompeten dalam bidang Web Development Direktur TTD';
@@ -21,6 +26,11 @@ const TRANSCRIPT_TEXT = 'TRANSKRIP NILAI Universitas Teknologi Indonesia Nama Ah
 
 const KTP_TEXT = 'NIK 3275011501900001 Nama AHMAD FAUZI RAHMAN Tempat Tgl Lahir JAKARTA 15 01 1990 Alamat JL MERDEKA NO 10 RT RW 001 002 Kelurahan MENTENG Kecamatan MENTENG Agama ISLAM Status Perkawinan BELUM KAWIN Pekerjaan KARYAWAN SWASTA Kewarganegaraan INDONESIA';
 
+/**
+ * Build a synthetic text-item list from whitespace-split text.
+ * @param {string} text
+ * @param {number} topCount
+ */
 function makeItems(text, topCount) {
   const words = text.trim().split(/\s+/);
   return words.map((w, i) => ({
@@ -95,7 +105,7 @@ describe('heuristic — runHeuristics', () => {
       { str: 'footer', y: 700, page: 1, height: 12, width: 50 },
       { str: 'middle', y: 400, page: 1, height: 12, width: 50 },
     ];
-    const result = runHeuristics('header middle footer test word extra more text enough to meet min', items, { heuristics: { minWords: 5, maxWords: 100 } });
+    const result = runHeuristics('header middle footer test word extra more text enough to meet min', items, /** @type {import('../src/types.js').Schema} */ ({ heuristics: { minWords: 5, maxWords: 100 } }));
     expect(result.passed).toBe(true);
   });
 });

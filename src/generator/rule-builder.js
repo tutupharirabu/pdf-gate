@@ -42,6 +42,7 @@ function makeId(label, used) {
  * @returns {{ rules: Array<{id: string, label: string, pattern: RegExp, required: boolean}>, warnings: string[] }}
  */
 export function buildRules(detectedPairs, fullText, name) {
+  /** @type {import('../types.js').SchemaRule[]} */
   const rules = [];
   const warnings = [];
   const usedIds = new Map();
@@ -64,12 +65,15 @@ export function buildRules(detectedPairs, fullText, name) {
         patternStr = escapedLabel + '\\s*:\\s*.+';
         break;
       case 'tabular':
-        // Matches label followed by at least 2+ spaces then value
-        patternStr = escapedLabel + '\\s{2,}.+';
+        // Matches label followed by flexible whitespace then value
+        // (fullText joins items with single spaces, so require \\s+ not \\s{2,})
+        patternStr = escapedLabel + '\\s+.+';
         break;
       case 'stacked':
-        // Matches label on one line, value on the next line
-        patternStr = escapedLabel + '\\s*\\n\\s*.+';
+        // Matches label followed by flexible whitespace then value.
+        // Newlines never survive inside a page's fullText (items are joined
+        // with single spaces), so the value follows the label via \\s+ too.
+        patternStr = escapedLabel + '\\s+.+';
         break;
       case 'header':
         // Matches the header line somewhere in the text

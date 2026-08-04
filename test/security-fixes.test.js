@@ -21,6 +21,10 @@ import * as zeroTrust from '../src/utils/zero-trust.js';
 
 const TMP = join(tmpdir(), 'pdf-gate-sec-test');
 
+/**
+ * Build a valid external schema JSON string for a given name.
+ * @param {string} name
+ */
 function validSchemaJson(name) {
   return JSON.stringify({
     name,
@@ -87,7 +91,7 @@ describe('zero-trust module (was broken by missing brace)', () => {
   });
 
   test('createSecureContext returns a frozen null-prototype object', () => {
-    const ctx = zeroTrust.createSecureContext({ a: 1, b: 'x' });
+    const ctx = /** @type {any} */ (zeroTrust.createSecureContext({ a: 1, b: 'x' }));
     expect(Object.getPrototypeOf(ctx)).toBeNull();
     expect(Object.isFrozen(ctx)).toBe(true);
     expect(ctx.a).toBe(1);
@@ -95,7 +99,7 @@ describe('zero-trust module (was broken by missing brace)', () => {
   });
 
   test('createSecureContext rejects prototype-pollution keys', () => {
-    const ctx = zeroTrust.createSecureContext({ __proto__: 'evil', constructor: 'x', prototype: 'y', ok: 1 });
+    const ctx = /** @type {any} */ (zeroTrust.createSecureContext({ __proto__: 'evil', constructor: 'x', prototype: 'y', ok: 1 }));
     expect(ctx.ok).toBe(1);
     expect(ctx).not.toHaveProperty('constructor');
     expect(ctx).not.toHaveProperty('prototype');

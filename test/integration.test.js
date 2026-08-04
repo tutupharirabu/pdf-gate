@@ -28,7 +28,7 @@ function makeBuffer(size = 10000) {
 
 describe('validatePDF — Input Validation', () => {
   test('throws for non-Buffer input', async () => {
-    await expect(validatePDF('bukan buffer', { schema: 'ijazah' }))
+    await expect(validatePDF(/** @type {any} */ ('bukan buffer'), { schema: 'ijazah' }))
       .rejects.toThrow();
   });
 
@@ -38,12 +38,12 @@ describe('validatePDF — Input Validation', () => {
   });
 
   test('throws for missing schema option', async () => {
-    await expect(validatePDF(makeBuffer(), {}))
+    await expect(validatePDF(makeBuffer(), /** @type {any} */ ({})))
       .rejects.toThrow();
   });
 
   test('throws for null options', async () => {
-    await expect(validatePDF(makeBuffer(), null))
+    await expect(validatePDF(makeBuffer(), /** @type {any} */ (null)))
       .rejects.toThrow();
   });
 });
