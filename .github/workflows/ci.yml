@@ -1,4 +1,4 @@
-name: CI
+name: pdf-gate CI
 
 on:
   push:
@@ -6,7 +6,8 @@ on:
   pull_request:
 
 jobs:
-  test:
+  quality-gate:
+    name: Quality Gate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,11 +20,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Typecheck
+      - name: Typecheck (tsc --noEmit)
         run: npm run typecheck
 
-      - name: Run tests
+      - name: Test suite (jest, 9 suites)
         run: npm test
 
-      - name: Check package contents
+      - name: Package contents (npm pack --dry-run)
         run: npm run check:pack
