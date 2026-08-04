@@ -36,7 +36,7 @@ import { validateFields } from './validator.js';
  * @param {number} pageCount - Total number of pages in the PDF.
  * @param {import('../types.js').Schema} schema - The schema selected
  *   by the user for validation.
- * @param {Map<string, import('../types.js').Schema>|Object<string, import('../types.js').Schema>} allSchemas -
+ * @param {Map<string, import('../types.js').Schema>|Record<string, import('../types.js').Schema>} allSchemas -
  *   Registry of all known schemas for cross-detection.
  * @returns {Promise<{
  *   passed: boolean,
@@ -57,7 +57,9 @@ export async function runLayer1(
   const t0 = performance.now();
 
   // Default empty structures for early-exit returns.
+  /** @type {Array<import('../types.js').RuleResult>} */
   const emptyRules = [];
+  /** @type {import('../types.js').Layer1Result['heuristics']} */
   const emptyHeuristics = { passed: false, wordCount: 0, flags: [] };
 
   // ------------------------------------------------------------------

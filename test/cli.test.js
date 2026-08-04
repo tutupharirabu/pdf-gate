@@ -10,6 +10,10 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CLI_PATH = path.join(__dirname, '../cli/index.js');
 
+/**
+ * Run the pdf-validate CLI with the given argument string.
+ * @param {string} args - Command-line arguments passed to the CLI.
+ */
 function runCLI(args) {
   return new Promise((resolve) => {
     exec(`node ${CLI_PATH} ${args}`, (error, stdout, stderr) => {

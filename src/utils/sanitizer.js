@@ -75,8 +75,9 @@ export function sanitizeBuffer(buffer) {
  * Strips forbidden keys (__proto__, constructor, prototype) and
  * only retains whitelisted keys.
  *
- * @param {object} options - Raw options object from caller.
- * @returns {object} Sanitized options object containing only whitelisted keys.
+ * @param {Record<string, unknown>} options - Raw options object from caller.
+ * @returns {import('../types.js').ValidateOptions} Sanitized options object
+ *   containing only whitelisted keys.
  * @throws {TypeError} If options is not an object.
  * @throws {Error} If forbidden keys are detected.
  */
@@ -117,6 +118,12 @@ const SAFE_MATCH_LIMIT = 100;
  * protection. Uses a wall-clock timeout and a match-count limit to prevent
  * catastrophic backtracking from hanging the process.
  *
+ * **Isolation caveat:** the timeout is enforced *after* each `exec()` returns.
+ * A single catastrophic-backtracking `exec()` on a non-global regex will block
+ * the event loop until it completes; it cannot be interrupted from JavaScript.
+ * Such an exec is still reported as `timedOut`, but full isolation from hostile
+ * patterns requires running regexes in Worker threads.
+ *
  * @param {RegExp} regex - The regular expression to test.
  * @param {string} input - The string to test against.
  * @param {number} [timeoutMs=5000] - Maximum execution time in milliseconds.
@@ -151,13 +158,13 @@ export function safeRegexTest(regex, input, timeoutMs = 5000) {
         if (matchCount >= SAFE_MATCH_LIMIT) {
           break;
         }
-        if (Date.now() - startTime > timeoutMs) {
-          timedOut = true;
-          break;
-        }
         if (match[0].length === 0) {
           safeRegex.lastIndex++;
           if (safeRegex.lastIndex > input.length) break;
+        }
+        if (Date.now() - startTime > timeoutMs) {
+          timedOut = true;
+          break;
         }
       }
     } else {
@@ -165,12 +172,17 @@ export function safeRegexTest(regex, input, timeoutMs = 5000) {
       if (match !== null) {
         matchCount = 1;
       }
-      if (Date.now() - startTime > timeoutMs) {
-        timedOut = true;
-      }
     }
   } catch (_err) {
     return { passed: false, matchCount, timedOut: true };
+  }
+
+  // Enforce the timeout AFTER the (first) exec() completes. Even a single
+  // exec() that catastrophically backtracks past the deadline — which cannot
+  // be interrupted from JS and will have blocked the event loop — must be
+  // reported as timedOut rather than as a legitimate match.
+  if (Date.now() - startTime > timeoutMs) {
+    timedOut = true;
   }
 
   return {

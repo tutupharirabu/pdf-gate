@@ -7,6 +7,14 @@
  * @license MIT
  */
 
+import { createRequire } from 'node:module';
+
+/**
+ * `require` bound to this ESM module, so `require.cache` can be inspected
+ * inside `validateDependencies()`. (In ESM there is no global `require`.)
+ */
+const require = createRequire(import.meta.url);
+
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 /**
@@ -35,26 +43,28 @@ export const ZERO_TRUST_MODE = true;
  * @returns {{ safe: boolean, handles: number, reason: string|null }}
  */
 export function assertNoNetwork() {
-  /** @type {Array} */
+  /** @type {unknown[]} */
   let handles = [];
 
   try {
-    if (typeof process._getActiveHandles === 'function') {
-      handles = process._getActiveHandles();
+    const proc = /** @type {any} */ (process);
+    if (typeof proc._getActiveHandles === 'function') {
+      handles = proc._getActiveHandles();
     }
   } catch (_err) {
     return { safe: true, handles: 0, reason: 'Cannot inspect active handles (API unavailable).' };
   }
 
   const networkHandles = handles.filter((h) => {
-    if (!h || typeof h !== 'object') return false;
-    const ctorName = h.constructor ? h.constructor.name : '';
+    const handle = /** @type {any} */ (h);
+    if (!handle || typeof handle !== 'object') return false;
+    const ctorName = handle.constructor ? handle.constructor.name : '';
     return (
       ctorName === 'Socket' ||
       ctorName === 'TLSSocket' ||
       ctorName === 'ClientRequest' ||
       ctorName === 'Server' ||
-      (ctorName === 'WriteStream' && h._handle && h._handle.constructor.name === 'TCP')
+      (ctorName === 'WriteStream' && handle._handle && handle._handle.constructor.name === 'TCP')
     );
   });
 
@@ -85,12 +95,27 @@ export function assertNoNetwork() {
 export function zeroBuffer(buffer) {
   if (!buffer) return;
 
+  // If the underlying ArrayBuffer is already detached (e.g. by pdfjs-dist),
+  // calling fill(0) will throw a TypeError. Detached buffers are already secure.
+  if (buffer.buffer && buffer.buffer.byteLength === 0) {
+    return;
+  }
+
   if (Buffer.isBuffer(buffer)) {
-    buffer.fill(0);
+    try {
+      buffer.fill(0);
+    } catch (_) {
+      // Best-effort safety
+    }
   } else if (buffer instanceof Uint8Array) {
-    buffer.fill(0);
+    try {
+      buffer.fill(0);
+    } catch (_) {
+      // Best-effort safety
+    }
   }
 }
+
 
 // ── Dependency Validation ──────────────────────────────────────────────────────
 
@@ -159,8 +184,8 @@ export function validateDependencies() {
  * - Is deeply frozen (Object.freeze).
  * - Cannot be mutated by any downstream code.
  *
- * @param {object} [props={}] - Properties to include in the context.
- * @returns {Readonly<object>} Immutable context object.
+ * @param {Record<string, unknown>} [props={}] - Properties to include in the context.
+ * @returns {Readonly<Record<string, unknown>>} Immutable context object.
  */
 export function createSecureContext(props = {}) {
   if (typeof props !== 'object' || props === null || Array.isArray(props)) {

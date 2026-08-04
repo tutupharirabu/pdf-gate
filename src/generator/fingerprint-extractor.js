@@ -85,8 +85,8 @@ import { escapeRegex } from '../utils/pattern-parser.js';
  * with case-insensitive matching.
  *
  * @param {string} text - Full document text
- * @param {Array} lines - Grouped text lines
- * @param {RegExp[]} hintFingerprints - User-provided hint patterns
+ * @param {Array<{fullText?: string}>} [lines] - Grouped text lines (reserved)
+ * @param {RegExp[]} [hintFingerprints=[]] - User-provided hint patterns
  * @returns {RegExp[]}
  */
 export function extractFingerprints(text, lines, hintFingerprints = []) {

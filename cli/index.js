@@ -27,6 +27,21 @@ import {
 
 const program = new Command();
 
+/**
+ * @typedef {object} CliOptions
+ * @property {string} [schema]
+ * @property {string[]} [schemaFile]
+ * @property {boolean} [json]
+ * @property {boolean} [quiet]
+ * @property {boolean} [skipCrypto]
+ * @property {boolean} [skipLayer2]
+ * @property {boolean} [listSchemas]
+ * @property {string} [generateSchema]
+ * @property {string} [schemaName]
+ * @property {string} [schemaLabel]
+ * @property {string} [output]
+ */
+
 program
   .name('pdf-validate')
   .description('Dual-layer PDF document validator — sanity check + cryptographic signature verification')
@@ -43,12 +58,12 @@ program
   .option('--schema-name <name>', 'Name for the generated schema')
   .option('--schema-label <label>', 'Human-readable label for the generated schema')
   .option('-o, --output <path>', 'Save generated schema to a JSON file')
-  .action(async (file, options) => {
+  .action(async (/** @type {string|undefined} */ file, /** @type {CliOptions} */ options) => {
     try {
       // ── List schemas ──────────────────────────────────────────────
       if (options.listSchemas) {
         listSchemas();
-        process.exit(0);
+        return;
       }
 
       // ── Generate schema ────────────────────────────────────────────
@@ -58,28 +73,32 @@ program
       }
 
       // ── Validate ───────────────────────────────────────────────────
-      if (!file) {
-        program.error('Harap berikan path file PDF. Gunakan --help untuk informasi.');
-      }
-
-      if (!options.schema) {
-        program.error('Harap tentukan --schema <name>. Gunakan --list-schemas untuk melihat opsi.');
-      }
-
       await handleValidate(file, options);
     } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
       if (options.json) {
-        console.log(JSON.stringify({ error: err.message }, null, 2));
+        console.log(JSON.stringify({ error: message }, null, 2));
       } else {
-        console.error(pc.red(`\n  Error: ${err.message}`));
+        console.error(pc.red(`\n  Error: ${message}`));
       }
-      process.exit(1);
+      process.exitCode = 1;
     }
   });
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
 
-async function handleValidate(file, options) {
+async function handleValidate(/** @type {string|undefined} */ file, /** @type {CliOptions} */ options) {
+  // Guards run here (before any file I/O). `return` after program.error()
+  // keeps TS control-flow narrowing working; program.error() exits anyway.
+  if (!file) {
+    program.error('Harap berikan path file PDF. Gunakan --help untuk informasi.');
+    return;
+  }
+  if (!options.schema) {
+    program.error('Harap tentukan --schema <name>. Gunakan --list-schemas untuk melihat opsi.');
+    return;
+  }
+
   // ── Path traversal security check on input file ───────────────────
   if (!isSafeFilePath(file)) {
     throw new Error(`Akses ditolak: path file "${file}" tidak aman (terdeteksi path traversal).`);
@@ -136,7 +155,8 @@ async function handleValidate(file, options) {
 
   if (options.quiet) {
     console.log(result.status);
-    process.exit(result.status === 'FAILED' ? 1 : 0);
+    process.exitCode = result.status === 'FAILED' ? 1 : 0;
+    return;
   }
 
   if (options.json) {
@@ -146,16 +166,23 @@ async function handleValidate(file, options) {
       return value;
     }));
     console.log(JSON.stringify(safe, null, 2));
-    process.exit(result.status === 'FAILED' ? 1 : 0);
+    process.exitCode = result.status === 'FAILED' ? 1 : 0;
+    return;
   }
 
   // Pretty print
   prettyPrint(result);
-  process.exit(result.status === 'FAILED' ? 1 : 0);
+  process.exitCode = result.status === 'FAILED' ? 1 : 0;
 }
 
 
-async function handleGenerateSchema(options) {
+async function handleGenerateSchema(/** @type {CliOptions} */ options) {
+  // --generate-schema is only invoked when truthy; guard for TS narrowing
+  if (!options.generateSchema) {
+    program.error('--generate-schema membutuhkan path file PDF template.');
+    return;
+  }
+
   // ── Path traversal safety check ──────────────────────────────────
   if (!isSafeFilePath(options.generateSchema)) {
     throw new Error(`Akses ditolak: path template "${options.generateSchema}" tidak aman (terdeteksi path traversal).`);
@@ -206,6 +233,13 @@ async function handleGenerateSchema(options) {
     zeroBuffer(buffer);
   }
 
+  if (!schema) {
+    throw new Error(
+      'Gagal menghasilkan schema dari template: ' +
+        (warnings || []).join('; '),
+    );
+  }
+
   // Register the schema
   registerSchema(schema);
 
@@ -239,7 +273,6 @@ async function handleGenerateSchema(options) {
   }
 
   console.log();
-  process.exit(0);
 }
 
 function listSchemas() {
@@ -251,11 +284,11 @@ function listSchemas() {
   console.log(`\n  Total: ${SCHEMAS.size} schemas\n`);
 }
 
-function prettyPrint(result) {
+function prettyPrint(/** @type {import('../src/types.js').ValidationResult} */ result) {
   const icon = result.status === 'VERIFIED' ? '✓' : result.status === 'PLAUSIBLE' ? '⚠' : '✗';
   const color = result.status === 'VERIFIED' ? pc.green : result.status === 'PLAUSIBLE' ? pc.yellow : pc.red;
 
-  console.log(color.bold(`\n  ${icon} Status: ${result.status}`));
+  console.log(pc.bold(color(`\n  ${icon} Status: ${result.status}`)));
   console.log('  ' + '─'.repeat(50));
   console.log(`  Schema:     ${result.schema}`);
   console.log(`  File:       ${result.fileName || '-'}`);
@@ -278,7 +311,7 @@ function prettyPrint(result) {
   if (result.layer1.heuristics) {
     console.log(`  Word count: ${result.layer1.heuristics.wordCount}`);
     if (result.layer1.heuristics.flags.length > 0) {
-      result.layer1.heuristics.flags.forEach(f => console.log(pc.yellow(`  ⚠ Flag: ${f}`)));
+      result.layer1.heuristics.flags.forEach((/** @type {string} */ f) => console.log(pc.yellow(`  ⚠ Flag: ${f}`)));
     }
   }
 

@@ -27,6 +27,9 @@ const FIXTURES = {
 /**
  * Simulate browser new File([buffer], name, { type }).
  * Returns an object that behaves like the Web File API.
+ * @param {Buffer} buffer - Raw PDF bytes.
+ * @param {string} name - File name.
+ * @param {string} [mimeType] - MIME type (default: application/pdf).
  */
 function makeFile(buffer, name, mimeType = 'application/pdf') {
   return {
@@ -49,6 +52,7 @@ function makeFile(buffer, name, mimeType = 'application/pdf') {
 /**
  * Format a ValidationResult into a frontend-friendly shape.
  * This mirrors what a React/Vue component would receive.
+ * @param {import('../src/types.js').ValidationResult} result
  */
 function toUploadResult(result) {
   const statusIcon = {
@@ -79,7 +83,7 @@ function toUploadResult(result) {
       detectedType: result.layer1?.detectedType || null,
       pageCount: result.pageCount,
       durationMs: result.totalDurationMs,
-      fieldResults: (result.layer1?.rules || []).map((r) => ({
+      fieldResults: (result.layer1?.rules || []).map((/** @type {import('../src/types.js').RuleResult} */ r) => ({
         label: r.label,
         passed: r.passed,
       })),

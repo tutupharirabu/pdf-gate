@@ -23,6 +23,7 @@ const FIXTURES = {
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe('runLayer2 — real PDF fixtures (unsigned documents)', () => {
+  /** @type {typeof import('../src/layer2/index.js').runLayer2} */
   let runLayer2;
 
   beforeAll(async () => {
@@ -80,6 +81,7 @@ describe('runLayer2 — real PDF fixtures (unsigned documents)', () => {
 // ─── Backward compatibility ──────────────────────────────────────────────────
 
 describe('runLayer2 — backward compatibility (unsigned bearer)', () => {
+  /** @type {typeof import('../src/layer2/index.js').runLayer2} */
   let runLayer2;
   beforeAll(async () => {
     ({ runLayer2 } = await import('../src/layer2/index.js'));

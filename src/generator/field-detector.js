@@ -30,8 +30,8 @@ const TABULAR_GAP_THRESHOLD = 50; // points
  * @returns {DetectedPair[]}
  */
 export function detectFieldValuePairs(lines, fullText) {
+  /** @type {DetectedPair[]} */
   const detected = [];
-  const fullTextClean = fullText || '';
 
   if (!Array.isArray(lines) || lines.length === 0) {
     return detected;
@@ -71,13 +71,10 @@ export function detectFieldValuePairs(lines, fullText) {
         const rightItems = items.slice(i + 1);
         const value = rightItems.map((it) => it.str).join(' ').trim();
         if (label.length >= 1 && value.length >= 1) {
-          // Avoid duplicating colon-detected entries
+          // Avoid duplicating colon-detected entries: only skip when an
+          // EXACT same label was already captured via the colon pattern.
           const alreadyColon = detected.some(
-            (d) =>
-              (d.pattern === 'colon' &&
-                d.label === label &&
-                d.value.startsWith(value)) ||
-              d.label === label,
+            (d) => d.label === label && d.pattern === 'colon',
           );
           if (!alreadyColon) {
             detected.push({
@@ -146,12 +143,20 @@ export function detectFieldValuePairs(lines, fullText) {
   for (const hdr of headerLines) {
     const already = detected.some((d) => d.label === hdr.text);
     if (!already) {
+      // Value = the first colon-separated line following the header on the
+      // same page (look ahead, like the hasColonChild scan above); fall back
+      // to the header text itself when no such line exists.
+      let value = hdr.text;
+      for (let j = hdr.index + 1; j < lines.length && lines[j].page === hdr.page; j++) {
+        const childTxt = (lines[j].fullText || '').trim();
+        if (childTxt.includes(':')) {
+          value = childTxt;
+          break;
+        }
+      }
       detected.push({
         label: hdr.text,
-        value: fullTextClean.substring(
-          0,
-          Math.min(fullTextClean.length, 200),
-        ),
+        value,
         pattern: 'header',
         confidence: 0.6,
       });

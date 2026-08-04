@@ -56,8 +56,10 @@ const BUILTIN_NAMES = new Set([
 const SCHEMAS = new Map();
 
 // Register built-in schemas.
+// Cast each entry: one built-in module (kk.js) omits `label` in its inferred
+// object type even though it is present at runtime.
 for (const schema of [ijazah, transkrip, sertifikat, ktp, akteKelahiran, sim, passport, kk]) {
-  SCHEMAS.set(schema.name, schema);
+  SCHEMAS.set(schema.name, /** @type {import('../types.js').Schema} */ (schema));
 }
 
 // ---------------------------------------------------------------------------
@@ -66,7 +68,7 @@ for (const schema of [ijazah, transkrip, sertifikat, ktp, akteKelahiran, sim, pa
 
 /**
  * Validate that a rule object has all required properties with correct types.
- * @param {object} rule
+ * @param {import('../types.js').SchemaRule} rule
  * @param {number} index – Rule position in the array (for error messages).
  * @throws {TypeError}
  */
@@ -87,7 +89,7 @@ function validateRule(rule, index) {
 
 /**
  * Fully validate a schema object.
- * @param {object} schema
+ * @param {import('../types.js').Schema} schema
  * @throws {TypeError}
  */
 function validateSchema(schema) {
@@ -121,7 +123,7 @@ function validateSchema(schema) {
 
 /**
  * Resolve a schema by name (string) or validate a custom schema object.
- * @param {string|object} nameOrObject
+ * @param {string|import('../types.js').Schema} nameOrObject
  * @returns {import('../types.js').Schema}
  * @throws {Error|TypeError}
  */
@@ -145,7 +147,7 @@ export function resolveSchema(nameOrObject) {
 /**
  * Register a custom schema at runtime.
  * Schema rules with string patterns are auto-parsed to RegExp.
- * @param {object} schema
+ * @param {import('../types.js').Schema} schema
  * @returns {import('../types.js').Schema} The registered schema
  * @throws {Error|TypeError}
  */
@@ -205,7 +207,7 @@ export function unregisterSchema(name) {
  *
  * @param {string} filePath – Path file schema (relatif atau absolut)
  * @param {object} [options={}]
- * @param {string|null} [options.allowedRoot=process.cwd()] – Direktori root untuk
+ * @param {string|null} [options.allowedRoot=process.cwd()] - Direktori root untuk
  *        membatasi path. Pass `null` untuk mengizinkan path absolut mana pun (trusted use).
  * @returns {Promise<import('../types.js').Schema>}
  * @throws {Error}
@@ -241,14 +243,14 @@ export async function loadSchemaFromFile(filePath, options = {}) {
 
     // Convert fingerprint strings to RegExp
     if (Array.isArray(obj.fingerprints)) {
-      obj.fingerprints = obj.fingerprints.map(fp =>
+      obj.fingerprints = obj.fingerprints.map((/** @type {string|RegExp} */ fp) =>
         typeof fp === 'string' ? parsePattern(fp) : fp,
       );
     }
 
     // Convert rule pattern strings to RegExp
     if (Array.isArray(obj.rules)) {
-      obj.rules = obj.rules.map(rule => ({
+      obj.rules = obj.rules.map((/** @type {{ pattern: string|RegExp }} */ rule) => ({
         ...rule,
         pattern: typeof rule.pattern === 'string' ? parsePattern(rule.pattern) : rule.pattern,
       }));

@@ -189,6 +189,7 @@ describe('fingerprint-extractor — extractFingerprints', () => {
 
   test('returns at most 5 fingerprints', () => {
     const fullText = 'A B C D E F G H I J K L M N O P Q R S T U V W X Y Z';
+    /** @type {import('../src/generator/line-grouper.js').GroupedLine[]} */
     const lines = [];
     const fingerprints = extractFingerprints(fullText, lines);
     expect(fingerprints.length).toBeLessThanOrEqual(5);
@@ -201,29 +202,32 @@ describe('fingerprint-extractor — extractFingerprints', () => {
 
 describe('confidence-scorer — calculateConfidence', () => {
   test('calculates confidence between 0 and 1', () => {
+    /** @type {import('../src/generator/field-detector.js').DetectedPair[]} */
     const fields = [
       { label: 'Nama', value: 'Test', pattern: 'colon', confidence: 0.95 },
       { label: 'NIM', value: '123', pattern: 'colon', confidence: 0.95 },
     ];
-    const schema = { rules: [{ id: 'nama' }, { id: 'nim' }] };
+    const schema = /** @type {any} */ ({ rules: [{ id: 'nama' }, { id: 'nim' }] });
     const { confidence } = calculateConfidence(fields, 5, 'Nama : Test\nNIM : 123', schema);
     expect(confidence).toBeGreaterThanOrEqual(0);
     expect(confidence).toBeLessThanOrEqual(1);
   });
 
   test('returns warnings for low confidence', () => {
+    /** @type {import('../src/generator/field-detector.js').DetectedPair[]} */
     const fields = [
       { label: 'X', value: 'Y', pattern: 'stacked', confidence: 0.3 },
     ];
-    const schema = { rules: [{ id: 'x' }] };
+    const schema = /** @type {any} */ ({ rules: [{ id: 'x' }] });
     const { confidence, warnings } = calculateConfidence(fields, 10, 'X\nY', schema);
     expect(confidence).toBeLessThan(0.8);
     expect(warnings.length).toBeGreaterThan(0);
   });
 
   test('returns warnings for too few fields', () => {
+    /** @type {import('../src/generator/field-detector.js').DetectedPair[]} */
     const fields = [{ label: 'A', value: 'B', pattern: 'colon', confidence: 0.9 }];
-    const schema = { rules: [{ id: 'a' }] };
+    const schema = /** @type {any} */ ({ rules: [{ id: 'a' }] });
     const { warnings } = calculateConfidence(fields, 10, 'A : B', schema);
     // Fewer than 3 fields should trigger a warning
     expect(warnings.some(w => w.includes('field') || w.includes('too few'))).toBe(true);

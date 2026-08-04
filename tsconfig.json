@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2024",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": ["node", "jest"],
+    "rootDir": "."
+  },
+  "include": ["src/**/*.js", "cli/**/*.js", "test/**/*.js", "examples/**/*.js"],
+  "exclude": ["node_modules", "dist", "coverage"]
+}

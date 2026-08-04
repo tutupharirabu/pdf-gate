@@ -40,8 +40,8 @@ function countWords(text) {
  * - Calculates a confidence score (0-1)
  *
  * @param {Buffer|Uint8Array} pdfBuffer - Raw PDF bytes of the template
- * @param {{ name: string, label: string, hintFingerprints?: RegExp[] }} options
- * @returns {Promise<{ schema: import('../types.js').Schema, confidence: number, detectedFields: string[], warnings: string[] }>}
+ * @param {{ name?: string, label?: string, hintFingerprints?: RegExp[] }} [options={}]
+ * @returns {Promise<{ schema: import('../types.js').Schema | null, confidence: number, detectedFields: string[], warnings: string[], durationMs?: number }>}
  */
 export async function generateSchema(pdfBuffer, options = {}) {
   const t0 = performance.now();
@@ -68,7 +68,9 @@ export async function generateSchema(pdfBuffer, options = {}) {
       schema: null,
       confidence: 0,
       detectedFields: [],
-      warnings: [`Gagal mem-parsing PDF: ${err.message}`],
+      warnings: [
+        `Gagal mem-parsing PDF: ${err instanceof Error ? err.message : String(err)}`,
+      ],
     };
   }
 

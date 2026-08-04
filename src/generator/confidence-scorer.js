@@ -8,7 +8,6 @@
 
 /**
  * @typedef {import('./field-detector.js').DetectedPair} DetectedPair
- * @typedef {import('./rule-builder.js').Rule} Rule
  */
 
 /**
@@ -17,7 +16,7 @@
  * @param {DetectedPair[]} detectedFields
  * @param {number} totalLines
  * @param {string} allText
- * @param {{ rules: Rule[] }} finalSchema
+ * @param {{ rules: import('../types.js').SchemaRule[] }} finalSchema
  * @returns {{ confidence: number, warnings: string[] }}
  */
 export function calculateConfidence(
