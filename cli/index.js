@@ -40,6 +40,8 @@ const program = new Command();
  * @property {string} [schemaName]
  * @property {string} [schemaLabel]
  * @property {string} [output]
+ * @property {boolean} [ocr]
+ * @property {string} [ocrLangs]
  */
 
 program
@@ -53,6 +55,8 @@ program
   .option('-q, --quiet', 'Only print status; exit code 1 if FAILED')
   .option('--skip-crypto', 'Skip Layer 2 cryptographic verification')
   .option('--skip-layer2', 'Alias for --skip-crypto')
+  .option('--ocr', 'Force OCR even when the PDF has extractable text')
+  .option('--ocr-langs <codes>', 'Comma-separated tesseract language codes (default: ind,eng)')
   .option('--list-schemas', 'List all available schema names')
   .option('--generate-schema <file>', 'Generate schema from a template PDF file')
   .option('--schema-name <name>', 'Name for the generated schema')
@@ -141,12 +145,31 @@ async function handleValidate(/** @type {string|undefined} */ file, /** @type {C
   const buffer = readFileSync(filePath);
   const skipLayer2 = options.skipCrypto || options.skipLayer2 || false;
 
+  // ── OCR options (only forwarded when explicitly set by the user) ──
+  // Let the library apply its own defaults (auto-trigger, ind+eng, page
+  // limit) when the flags are absent.
+  /** @type {{ ocr?: boolean, ocrLanguages?: string[] }} */
+  const ocrOptions = {};
+  if (options.ocr) {
+    ocrOptions.ocr = true;
+  }
+  if (options.ocrLangs) {
+    const langs = options.ocrLangs
+      .split(',')
+      .map(code => code.trim())
+      .filter(Boolean);
+    if (langs.length > 0) {
+      ocrOptions.ocrLanguages = langs;
+    }
+  }
+
   let result;
   try {
     result = await validatePDF(buffer, {
       schema: options.schema,
       fileName: basename(filePath),
       skipLayer2,
+      ...ocrOptions,
     });
   } finally {
     // ── Secure Buffer Disposal ────────────────────────────────────────

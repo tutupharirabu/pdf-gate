@@ -21,7 +21,8 @@ import {
   getAllSchemas,
 } from './schemas/index.js';
 import { generateSchema } from './generator/index.js';
-import { sanitizeBuffer, sanitizeOptions, safeRegexTest, MAX_BUFFER_SIZE, isSafeFilePath } from './utils/sanitizer.js';
+import { runOcr } from './ocr/index.js';
+import { sanitizeBuffer, sanitizeOptions, safeRegexTest, MAX_BUFFER_SIZE, isSafeFilePath, DEFAULT_OCR_LANGUAGES, DEFAULT_OCR_PAGE_LIMIT } from './utils/sanitizer.js';
 import { ZERO_TRUST_MODE, assertNoNetwork, zeroBuffer, validateDependencies, createSecureContext } from './utils/zero-trust.js';
 
 // ── Re-exports ────────────────────────────────────────────────────────────────
@@ -156,9 +157,64 @@ export async function validatePDF(buffer, options) {
 
   const { fullText, items, pageCount } = parseResult;
 
+  // ── OCR for scanned documents (optional, lazy-loaded) ───────────────
+  // Auto-trigger: no extractable text AND page count within the limit.
+  // Force trigger: `ocr: true` bypasses the page-limit gate.
+  const ocrLanguages =
+    Array.isArray(safeOptions.ocrLanguages) && safeOptions.ocrLanguages.length > 0
+      ? safeOptions.ocrLanguages
+      : DEFAULT_OCR_LANGUAGES;
+  const ocrPageLimit =
+    typeof safeOptions.ocrPageLimit === 'number' && safeOptions.ocrPageLimit > 0
+      ? safeOptions.ocrPageLimit
+      : DEFAULT_OCR_PAGE_LIMIT;
+  const shouldAutoOcr =
+    fullText.trim().length < 10 && pageCount <= ocrPageLimit;
+
+  /** @type {import('./types.js').OcrResult|null} */
+  let ocrMeta = null;
+  let textForLayer1 = fullText;
+
+  if (safeOptions.ocr === true || shouldAutoOcr) {
+    const ocrT0 = performance.now();
+    try {
+      const ocr = await runOcr(toBuffer(buffer), {
+        languages: ocrLanguages,
+        pageLimit: ocrPageLimit,
+      });
+      ocrMeta = {
+        used: true,
+        engine: ocr.engine,
+        languages: ocr.languages,
+        confidence: ocr.confidence,
+        durationMs: ocr.durationMs,
+        pages: ocr.pages,
+        charCount: ocr.text.length,
+        error: null,
+      };
+      textForLayer1 = ocr.text;
+    } catch (err) {
+      // OCR failure never fails the document: keep the original text and
+      // record the error so the failure reason stays truthful.
+      ocrMeta = {
+        used: true,
+        engine: null,
+        languages: ocrLanguages,
+        confidence: null,
+        durationMs: Math.round(performance.now() - ocrT0),
+        pages: 0,
+        charCount: 0,
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
+  }
+
   // 2. Run Layer 1 and Layer 2 in PARALLEL
   /** @type {Promise<import('./types.js').Layer1Result>} */
-  const layer1Promise = runLayer1(fullText, items, pageCount, schema, SCHEMAS);
+  const layer1Promise = runLayer1(textForLayer1, items, pageCount, schema, SCHEMAS).then((layer1) => ({
+    ...layer1,
+    ocr: ocrMeta,
+  }));
   /** @type {Promise<import('./types.js').Layer2Result>} */
   const layer2Promise = skipLayer2
     ? Promise.resolve(skippedLayer2Result())
@@ -229,6 +285,7 @@ function buildFailedResult(schema, fileName, bytes, pageCount, layer1, failReaso
       failReason,
       rules: [],
       heuristics: { passed: false, wordCount: 0, flags: [] },
+      ocr: null,
       durationMs: 0,
     },
     layer2: skippedLayer2Result(),
