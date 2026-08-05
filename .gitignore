@@ -19,3 +19,5 @@ __probe__.js
 # Test fixtures contain PII (real documents) — keep them local-only, never commit
 test/*.pdf
 test/fixtures/*.pdf
+# tesseract.js cache artifacts (downloaded to CWD by default)
+/*.traineddata

@@ -12,6 +12,7 @@
  */
 
 import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
 import { createRequire } from 'node:module';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -71,6 +72,9 @@ export async function recognizeImages(pngs, options = {}) {
       // Traineddata is bundled uncompressed (tessdata_best); tell the
       // engine not to look for `.gz` variants.
       gzip: false,
+      // Keep tesseract's download cache out of the working directory — it
+      // would otherwise drop *.traineddata files into the project root.
+      cachePath: tmpdir(),
     };
     // Only attach the logger when provided — tesseract.js calls it
     // unconditionally when the key exists, so `undefined` breaks it.
