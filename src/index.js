@@ -180,7 +180,9 @@ export async function validatePDF(buffer, options) {
     try {
       const ocr = await runOcr(toBuffer(buffer), {
         languages: ocrLanguages,
-        pageLimit: ocrPageLimit,
+        // Force mode (ocr: true) ignores ocrPageLimit — process ALL pages.
+        // (Rasterizer treats pageLimit <= 0 as "all pages".)
+        pageLimit: safeOptions.ocr === true ? 0 : ocrPageLimit,
       });
       ocrMeta = {
         used: true,

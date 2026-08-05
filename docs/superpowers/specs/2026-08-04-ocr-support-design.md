@@ -36,7 +36,7 @@ PDF buffer
 │ src/ocr/rasterizer.js — pdfjs-dist → @napi-rs/canvas         │
 │                        (page → PNG bitmap per page)          │
 ├─────────────────────────────────────────────────────────────┤
-│ src/ocr/engine.js    — tesseract.js v7 (WASM worker),        │
+│ src/ocr/engine.js    — tesseract.js v6 (WASM worker),        │
 │                        lazy-loaded via dynamic import,       │
 │                        language packs from traineddata/      │
 ├─────────────────────────────────────────────────────────────┤
@@ -76,7 +76,7 @@ Layer 1 — fingerprint → heuristics → field rules (unchanged)
 ```js
 layer1.ocr: {
   used: true,             // true when OCR was attempted
-  engine: 'tesseract.js@7.0.0', // engine identifier, or null on failure
+  engine: "tesseract.js@6.0.1", // engine identifier, or null on failure
   languages: ['ind', 'eng'],
   confidence: 0.92,       // average confidence 0–1, or null when failed
   durationMs: 1843,       // wall-clock OCR processing time

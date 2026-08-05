@@ -191,7 +191,7 @@ Engine mendeteksi **4 pola layout**: colon-separated, tabular/box, stacked label
 
 ## 🤖 OCR untuk PDF Scan
 
-PDF scan (tanpa teks yang bisa diekstrak) otomatis di-OCR dengan **tesseract.js v7 (WASM)** — bahasa **Indonesia + Inggris**, **fully local** (zero network — zero-trust tetap terjaga). Hasil OCR dimasukkan ke **Layer 1** (fingerprint, heuristics, field rules) sehingga dokumen scan bisa divalidasi seperti PDF digital.
+PDF scan (tanpa teks yang bisa diekstrak) otomatis di-OCR dengan **tesseract.js v6 (WASM)** — bahasa **Indonesia + Inggris**, **fully local** (zero network — zero-trust tetap terjaga). Hasil OCR dimasukkan ke **Layer 1** (fingerprint, heuristics, field rules) sehingga dokumen scan bisa divalidasi seperti PDF digital.
 
 ### CLI
 
@@ -221,7 +221,7 @@ const result = await validatePDF(buffer, {
 ```js
 layer1.ocr: {
   used: true,
-  engine: 'tesseract.js@7.0.0',
+  engine: "tesseract.js@6.0.1",,
   languages: ['ind', 'eng'],
   confidence: 0.92,
   durationMs: 1843,
@@ -285,7 +285,7 @@ layer1.ocr: {
 
 ```bash
 npm install
-npm test                 # Run all tests (9 suites, 99 tests)
+npm test                 # Run all tests (11 suites, 106+ tests)
 npm run test:coverage    # Coverage report
 ```
 
@@ -307,7 +307,7 @@ pdf-gate/
 ├── cli/index.js               # CLI (picocolors, commander)
 ├── demo/                      # Demo server (Express + multer)
 ├── examples/                  # Custom schema examples
-├── test/                      # 9 test suites (incl. ocr.test.js)
+├── test/                      # 11 test suites (incl. ocr.test.js)
 ├── .github/workflows/ci.yml   # CI (typecheck + tests + pack check)
 ├── LICENSE                    # MIT
 └── package.json

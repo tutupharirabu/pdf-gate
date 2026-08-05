@@ -29,16 +29,13 @@ const TRAINEDDATA_DIR = fileURLToPath(new URL('./traineddata/', import.meta.url)
  * wasm-feature-detect) picks the "relaxedsimd" build on some runtimes,
  * which fails to link ("missing function: DotProductSSE") — observed with
  * tesseract.js-core 7.x on Node.js. Pinning SIMD is deterministic and works
- * across tesseract.js 6.x/7.x.
+ * across tesseract.js 6.x/7.x. If the core cannot be resolved the worker
+ * simply fails to start with a clear message.
  * @type {string}
  */
 const CORE_PATH = (() => {
-  try {
-    const require = createRequire(import.meta.url);
-    return require.resolve('tesseract.js-core/tesseract-core-simd.wasm.js');
-  } catch {
-    return 'tesseract.js-core/tesseract-core-simd.wasm.js';
-  }
+  const require = createRequire(import.meta.url);
+  return require.resolve('tesseract.js-core/tesseract-core-simd.wasm.js');
 })();
 
 /**

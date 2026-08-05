@@ -1,17 +1,11 @@
 /**
  * @module test/ocr.test
  * @description OCR feature tests for pdf-gate:
- *              - `runOcr()` smoke tests on a synthetic (canvas-rendered) PNG
+ *              - OCR engine smoke tests on a synthetic (canvas-rendered) PNG
  *                with sertifikat-style text — no real documents involved.
  *              - `validatePDF()` OCR integration contract: auto-trigger on
  *                text-less PDFs, no-trigger on text PDFs, force mode, and
  *                option sanitization.
- *
- *              The OCR engine module (src/ocr/) is loaded lazily via a
- *              dynamic import so the integration tests can run independently
- *              of the (parallel) engine implementation. Until src/ocr/index.js
- *              exists, the smoke tests fail loudly with ERR_MODULE_NOT_FOUND —
- *              they are never silently skipped.
  */
 
 import { validatePDF } from '../src/index.js';
@@ -140,40 +134,7 @@ function renderSertifikatPng() {
 }
 
 // =============================================================================
-// OCR engine loader (lazy)
-// =============================================================================
-
-/**
- * Result shape of a successful `runOcr()` call (src/ocr/index.js contract).
- * @typedef {object} OcrRunResult
- * @property {string}   text       - Extracted OCR text.
- * @property {number}   pages      - Number of pages processed.
- * @property {number}   confidence - Average OCR confidence (0-1).
- * @property {number}   durationMs - Wall-clock OCR processing time in ms.
- * @property {string}   engine     - Engine identifier (e.g. "tesseract.js@7.x").
- * @property {string[]} languages  - Language codes used (e.g. ["ind","eng"]).
- */
-
-/**
- * Module specifier for the OCR engine. Kept in a variable so the dynamic
- * import below stays out of static module resolution: TypeScript/checkJs
- * must not flag the not-yet-existing module, and the integration tests in
- * this file must still load while src/ocr/ is being implemented in parallel.
- * @type {string}
- */
-const OCR_MODULE_SPECIFIER = '../src/ocr/index.js';
-
-/**
- * Load the OCR engine module namespace. Fails loudly (ERR_MODULE_NOT_FOUND)
- * until src/ocr/index.js exists — no silent skips.
- * @returns {Promise<{ runOcr: (buffer: Buffer, options?: object) => Promise<OcrRunResult> }>}
- */
-async function loadOcrModule() {
-  return /** @type {any} */ (await import(OCR_MODULE_SPECIFIER));
-}
-
-// =============================================================================
-// runOcr — synthetic PNG smoke tests (real OCR, ~2-5s each)
+// OCR engine — synthetic PNG smoke tests (real OCR, ~2-5s each)
 // NOTE: runOcr() accepts a PDF buffer; these smoke tests exercise the
 // engine-level recognizeImages() API directly against synthetic PNGs.
 describe('OCR engine — synthetic PNG smoke tests', () => {
@@ -262,30 +223,104 @@ describe('validatePDF — OCR integration', () => {
     });
     expect(forcedBeyondLimit.layer1.ocr).toHaveProperty('used', true);
   }, 60_000);
+});
 
-  test('ocrLanguages: [] does not crash — defaults are restored (or OCR fails cleanly)', async () => {
-    const result = await validatePDF(makeEmptyPdf(), {
+/**
+ * Build a minimal valid PDF with `pageCount` blank pages (no text content).
+ * Used to test the automatic-OCR page-limit guard (default 10).
+ * @param {number} pageCount - Number of blank pages (>= 1).
+ * @returns {Buffer} The PDF bytes.
+ */
+function makeMultiPageEmptyPdf(pageCount) {
+  const kids = [];
+  const pages = [];
+  for (let i = 0; i < pageCount; i++) {
+    const objNum = 3 + i * 2; // page object
+    kids.push(`${objNum} 0 R`);
+    pages.push({ objNum, contentNum: objNum + 1 });
+  }
+
+  let pdf = '%PDF-1.4\n';
+  /** @type {number[]} */
+  const offsets = [];
+
+  /**
+   * @param {string} body - PDF object body text.
+   */
+  const addObject = (body) => {
+    offsets.push(Buffer.byteLength(pdf, 'latin1'));
+    pdf += `${offsets.length} 0 obj\n${body}\nendobj\n`;
+  };
+
+  addObject('<< /Type /Catalog /Pages 2 0 R >>');
+  addObject(`<< /Type /Pages /Kids [${kids.join(' ')}] /Count ${pageCount} >>`);
+
+  for (const { objNum, contentNum } of pages) {
+    addObject(
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents ${contentNum} 0 R >>`,
+    );
+    addObject('<< /Length 0 >>\nstream\n\nendstream');
+  }
+
+  const total = offsets.length + 1;
+  const xrefOffset = Buffer.byteLength(pdf, 'latin1');
+  pdf += 'xref\n0 ' + total + '\n0000000000 65535 f \n';
+  for (const off of offsets) {
+    pdf += `${String(off).padStart(10, '0')} 00000 n \n`;
+  }
+  pdf += `trailer\n<< /Size ${total} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+
+  return Buffer.from(pdf, 'latin1');
+}
+
+// =============================================================================
+// Page-limit guard + force mode + concurrency (review fixes)
+// =============================================================================
+
+describe('OCR page-limit guard & force mode', () => {
+  test('auto-OCR does NOT run on an 11-page PDF (default limit 10) — layer1.ocr is null', async () => {
+    const result = await validatePDF(makeMultiPageEmptyPdf(11), {
       schema: 'sertifikat',
-      ocrLanguages: [],
       skipLayer2: true,
     });
 
-    expect(result.pageCount).toBe(1);
+    expect(result.pageCount).toBe(11);
+    // Over the limit: OCR must not be attempted automatically.
+    expect(result.layer1.ocr).toBeNull();
+    // Original failure path preserved.
+    expect(result.status).toBe('FAILED');
+    expect(result.layer1.failReason).toContain('tidak memiliki teks');
+  }, 30_000);
 
-    if (!result.layer1.ocr) {
-      throw new Error('expected layer1.ocr to be set (auto-trigger on empty PDF)');
-    }
-    expect(result.layer1.ocr.used).toBe(true);
+  test('force mode (ocr: true) IGNORES the page limit — runs on an 11-page PDF', async () => {
+    const result = await validatePDF(makeMultiPageEmptyPdf(11), {
+      schema: 'sertifikat',
+      ocr: true,
+      ocrPageLimit: 5,
+      skipLayer2: true,
+    });
 
-    if (result.layer1.ocr.languages.length === 0) {
-      // Literal interpretation of []: the engine must have failed cleanly
-      // and validation must still complete with the original text.
-      expect(result.layer1.ocr.error).toBeTruthy();
-      expect(result.layer1.passed).toBe(false);
-      expect(result.layer1.failReason).toContain('tidak memiliki teks');
-    } else {
-      // Empty list fell back to the defaults.
-      expect(result.layer1.ocr.languages).toEqual(['ind', 'eng']);
-    }
+    expect(result.pageCount).toBe(11);
+    expect(result.layer1.ocr).not.toBeNull();
+    expect(result.layer1.ocr?.used).toBe(true);
+    // Force processes ALL pages (blank pages yield no text).
+    expect(result.layer1.ocr?.pages).toBe(11);
+  }, 90_000);
+});
+
+describe('OCR rasterizer — concurrent calls', () => {
+  test('two concurrent rasterizePdf calls leave globalThis.fetch restored (no leak)', async () => {
+    const originalFetch = globalThis.fetch;
+    const { rasterizePdf } = await import('../src/ocr/rasterizer.js');
+
+    const [a, b] = await Promise.all([
+      rasterizePdf(makeEmptyPdf()),
+      rasterizePdf(makeTextPdf('SERTIFIKAT')),
+    ]);
+
+    expect(a.length).toBe(1);
+    expect(b.length).toBe(1);
+    // Regression: the refcounted patch must fully restore the original fetch.
+    expect(globalThis.fetch).toBe(originalFetch);
   }, 60_000);
 });
