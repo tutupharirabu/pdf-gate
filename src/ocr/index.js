@@ -25,7 +25,6 @@ async function getTesseractVersion() {
   try {
     const { createRequire } = await import('node:module');
     const require = createRequire(import.meta.url);
-    // @ts-expect-error - tesseract.js ships no type declarations for subpath
     const pkg = require('tesseract.js/package.json');
     return typeof pkg.version === 'string' ? pkg.version : 'unknown';
   } catch {
