@@ -7,6 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22.0.0-brightgreen)](https://nodejs.org/)
 [![Zero Trust](https://img.shields.io/badge/Zero%20Trust-✅-blue)](#)
+[![CodeQL](https://github.com/tutupharirabu/pdf-gate/actions/workflows/codeql.yml/badge.svg)](https://github.com/tutupharirabu/pdf-gate/actions/workflows/codeql.yml)
 
 ---
 
