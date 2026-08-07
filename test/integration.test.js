@@ -78,8 +78,6 @@ const FIXTURES = {
   certificate: path.join(__d, 'Certificate_of_Completion - Softskills and Greenskills Training.pdf'),
 };
 
-const hasFixtures = existsSync(FIXTURES.ijazah) || existsSync(FIXTURES.sertifikat) || existsSync(FIXTURES.certificate);
-
 describe('validatePDF — Real PDF Fixtures', () => {
   test('Ijazah.pdf parses and validates with schema ijazah', async () => {
     if (!existsSync(FIXTURES.ijazah)) return; // fixture not available — skip
