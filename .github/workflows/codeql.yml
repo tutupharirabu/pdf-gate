@@ -144,10 +144,13 @@ jobs:
         shell: bash
         run: |
           CONFIG_PATH="$GITHUB_WORKSPACE/codeql-config-${{ matrix.profile }}.yml"
-          printf 'name: "pdf-gate CodeQL config (%s)"\n' "${{ matrix.profile }}" \
-            > "$CONFIG_PATH"
-          printf 'paths-ignore: %s\n' '${{ toJson(matrix.paths-ignore) }}' \
-            >> "$CONFIG_PATH"
+          {
+            echo "name: \"pdf-gate CodeQL config (${{ matrix.profile }})\""
+            echo "paths-ignore:"
+            for p in ${{ join(matrix.paths-ignore, ' ') }}; do
+              echo "  - '$p'"
+            done
+          } > "$CONFIG_PATH"
           echo "codeql-config-path=$CONFIG_PATH" >> "$GITHUB_ENV"
           cat "$CONFIG_PATH"
 
