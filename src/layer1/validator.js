@@ -73,7 +73,6 @@ export function isRegexMalicious(pattern) {
     /** @type {Array<{hasQuantifier: boolean, hasAlternation: boolean}>} */
     const groupStack = [];
     let lastClosedGroupDangerous = false;
-    let prevSignificant = '';
 
     for (let i = 0; i < src.length; i++) {
       const ch = src[i];
@@ -84,7 +83,6 @@ export function isRegexMalicious(pattern) {
         // closed group and any later quantifier, so it disarms the
         // "quantifier immediately after )" alarm.
         if (i + 1 < src.length) {
-          prevSignificant = src[i + 1];
           lastClosedGroupDangerous = false;
           i++;
         }
@@ -104,17 +102,14 @@ export function isRegexMalicious(pattern) {
         // on the stack so alternations/quantifiers in one group never
         // leak into a nested group.
         groupStack.push({ hasQuantifier: false, hasAlternation: false });
-        prevSignificant = ch;
         continue;
       }
       if (ch === ')') {
         const state = groupStack.pop();
         if (state === undefined) {
           // Unmatched `)` — treat as literal/benign
-          prevSignificant = ch;
           continue;
         }
-        prevSignificant = ch;
         // Mark whether THIS group (now closed) was dangerous —
         // a quantifier IMMEDIATELY following it triggers the alarm
         lastClosedGroupDangerous = state.hasAlternation || state.hasQuantifier;
@@ -158,7 +153,6 @@ export function isRegexMalicious(pattern) {
         continue;
       }
       if (ch !== ' ') {
-        prevSignificant = ch;
         // Any ordinary character between a closed group and a
         // later quantifier (e.g. `(?:A|B)\s+`) disarms the alarm —
         // only a quantifier IMMEDIATELY after `)` is dangerous
