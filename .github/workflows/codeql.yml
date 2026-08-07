@@ -137,16 +137,19 @@ jobs:
       # Tulis file config CodeQL per-cell. Ditulis lewat step shell (bukan
       # YAML-in-YAML di input `config`) supaya paths-ignore flow sequence
       # matrix tidak merusak parsing YAML workflow (error "deficient
-      # indentation" di user-config-from-action.yml).
+      # indentation" di user-config-from-action.yml). File harus berada di
+      # DALAM workspace — config-file di luar workspace ditolak CodeQL init
+      # ("configuration file ... is outside of the workspace").
       - name: Write CodeQL config file
         shell: bash
         run: |
-          mkdir -p "$RUNNER_TEMP/codeql-config"
+          CONFIG_PATH="$GITHUB_WORKSPACE/codeql-config-${{ matrix.profile }}.yml"
           printf 'name: "pdf-gate CodeQL config (%s)"\n' "${{ matrix.profile }}" \
-            > "$RUNNER_TEMP/codeql-config/config.yml"
+            > "$CONFIG_PATH"
           printf 'paths-ignore: %s\n' '${{ toJson(matrix.paths-ignore) }}' \
-            >> "$RUNNER_TEMP/codeql-config/config.yml"
-          cat "$RUNNER_TEMP/codeql-config/config.yml"
+            >> "$CONFIG_PATH"
+          echo "codeql-config-path=$CONFIG_PATH" >> "$GITHUB_ENV"
+          cat "$CONFIG_PATH"
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
@@ -154,12 +157,18 @@ jobs:
           languages: javascript-typescript
           build-mode: none
           queries: ${{ matrix.queries }}
-          config-file: ${{ runner.temp }}/codeql-config/config.yml
+          config-file: ${{ env.codeql-config-path }}
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
         with:
           category: ${{ matrix.category }}
+
+      # Bersihkan file config sementara dari workspace runner
+      - name: Cleanup config file
+        if: always()
+        shell: bash
+        run: rm -f "${{ env.codeql-config-path }}"
 
       # -----------------------------------------------------------------------
       # Quality gate berbasis SARIF: blokir PR kalau ada temuan di atas ambang
