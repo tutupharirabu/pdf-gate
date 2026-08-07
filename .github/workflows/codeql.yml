@@ -78,10 +78,10 @@ jobs:
   # interpretasi — CodeQL cukup mengekstrak source tree tanpa menjalankan build.
   #
   # paths-ignore ditaruh di input `config` (bukan input langsung init) karena
-  # github/codeql-action/init@v3 tidak memiliki input `paths-ignore` langsung.
+  # github/codeql-action/init@v4 tidak memiliki input `paths-ignore` langsung.
   # Nilai per-cell di-render lewat toJson() dari flow sequence matrix.
   #
-  # Quality gate: github/codeql-action/analyze@v3 TIDAK memiliki input `fail-on`
+  # Quality gate: github/codeql-action/analyze@v4 TIDAK memiliki input `fail-on`
   # (tidak ada di action.yml v3 maupun v4). Untuk memblokir PR saat ada temuan,
   # workflow ini memakai pola advanced: step "Check for CodeQL findings"
   # membaca SARIF hasil analyze dan exit non-zero jika ada temuan dengan level
@@ -135,7 +135,7 @@ jobs:
           path: node_modules
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
           build-mode: none
@@ -145,7 +145,7 @@ jobs:
             paths-ignore: ${{ toJson(matrix.paths-ignore) }}
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: ${{ matrix.category }}
 
