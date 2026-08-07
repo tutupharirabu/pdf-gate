@@ -1,0 +1,95 @@
+# GitHub Dependabot — pdf-gate
+# Referensi resmi: https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference
+#
+# Dua update yang dipantau:
+#   1. npm (root)          -> dependency production & development
+#   2. github-actions      -> action yang dipakai di .github/workflows
+# Alasan keputusan (ignore / groups / limit) didokumentasikan di docs/dependabot.md.
+version: 2
+updates:
+  # ---------------------------------------------------------------------------
+  # 1. npm — package.json + package-lock.json (root)
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Asia/Jakarta"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+      include: "scope"
+    groups:
+      # Grup A — pustaka pemrosesan PDF (runtime/production).
+      pdf-processing:
+        patterns:
+          - "tesseract.js"
+          - "pdfjs-dist"
+          - "@ninja-labs/verify-pdf"
+          - "@napi-rs/canvas"
+        update-types:
+          - "minor"
+          - "patch"
+      # Grup B — tooling development (jest / typescript / @types).
+      dev-tooling:
+        patterns:
+          - "jest"
+          - "typescript"
+          - "@types/jest"
+        update-types:
+          - "minor"
+          - "patch"
+      # Grup C — semua npm dependency lain yang tidak masuk grup A/B.
+      other-deps:
+        patterns:
+          - "*"
+    # Catatan keamanan:
+    #   node-forge di-pin ke ^1.4.0 dan brace-expansion ke ^2.0.2 lewat
+    #   package.json `overrides` (keduanya override keamanan, lihat
+    #   docs/dependabot.md). Dependabot TIDAK menaikkan range `overrides`
+    #   lewat PR biasa (paket-paket itu bukan dependency langsung di
+    #   package.json), jadi tidak ada PR "update node-forge" yang perlu
+    #   di-ignore. Namun kami tambahkan allow + ignore eksplisit agar
+    #   jaring pengaman ganda: tidak ada versi node-forge < 1.4.0 yang
+    #   diusulkan Dependabot untuk dependency apa pun.
+    allow:
+      - dependency-name: "node-forge"
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
+    ignore:
+      - dependency-name: "node-forge"
+        versions:
+          - "<1.4.0"
+      - dependency-name: "brace-expansion"
+        versions:
+          - "<2.0.2"
+
+  # ---------------------------------------------------------------------------
+  # 2. GitHub Actions — .github/workflows/* dan action.yml di root
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "06:00"
+      timezone: "Asia/Jakarta"
+    open-pull-requests-limit: 5
+    labels:
+      - "ci"
+    commit-message:
+      prefix: "chore(ci)"
+      include: "scope"
+    groups:
+      actions-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
