@@ -58,7 +58,8 @@
   },
   "overrides": {
     "node-forge": "^1.4.0",
-    "brace-expansion": "^2.0.2"
+    "brace-expansion": "^2.0.2",
+    "js-yaml": "^3.15.1"
   },
   "scripts": {
     "test": "node --experimental-vm-modules node_modules/.bin/jest --forceExit --runInBand",
