@@ -1,4 +1,4 @@
-name: pdf-gate CI
+name: CI
 
 on:
   push:
