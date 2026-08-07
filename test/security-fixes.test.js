@@ -99,7 +99,12 @@ describe('zero-trust module (was broken by missing brace)', () => {
   });
 
   test('createSecureContext rejects prototype-pollution keys', () => {
-    const ctx = /** @type {any} */ (zeroTrust.createSecureContext({ __proto__: 'evil', constructor: 'x', prototype: 'y', ok: 1 }));
+    const payload = Object.create(null);
+    Object.defineProperty(payload, '__proto__', { value: 'evil', enumerable: true, writable: true, configurable: true });
+    payload.constructor = 'x';
+    payload.prototype = 'y';
+    payload.ok = 1;
+    const ctx = /** @type {any} */ (zeroTrust.createSecureContext(payload));
     expect(ctx.ok).toBe(1);
     expect(ctx).not.toHaveProperty('constructor');
     expect(ctx).not.toHaveProperty('prototype');
