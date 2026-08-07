@@ -3,7 +3,7 @@
  * @description Integration tests for the pdf-gate CLI.
  */
 
-import { exec } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -12,11 +12,13 @@ const CLI_PATH = path.join(__dirname, '../cli/index.js');
 
 /**
  * Run the pdf-validate CLI with the given argument string.
+ * Uses `execFile` with an argv array so arguments are never
+ * interpolated into a shell command (no injection, no shell).
  * @param {string} args - Command-line arguments passed to the CLI.
  */
 function runCLI(args) {
   return new Promise((resolve) => {
-    exec(`node ${CLI_PATH} ${args}`, (error, stdout, stderr) => {
+    execFile(process.execPath, [CLI_PATH, ...args.split(/\s+/)], (error, stdout, stderr) => {
       resolve({
         code: error ? error.code : 0,
         stdout: stdout.toString(),

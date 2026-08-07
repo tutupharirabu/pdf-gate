@@ -63,10 +63,108 @@ function truncate(str, maxLen) {
 export function isRegexMalicious(pattern) {
   try {
     const src = typeof pattern === 'string' ? pattern : pattern.source;
-    // Nested quantifiers: (a+)+, (a*)*, (a+)*
-    if (/\([^)]*[+*][^)]*\)[+*]/.test(src)) return true;
-    // Alternation-in-group followed by a quantifier: (a|a)+, (a|aa)*
-    if (/\([^)]*\|[^)]*\)[+*]/.test(src)) return true;
+
+    // Single linear scan over the source. Tracks paren depth (via a
+    // stack of per-group states) to detect nested quantifiers
+    // ((a+)+, (a*)*, (a+)*) and alternation-inside-a-group followed
+    // immediately by a quantifier ((a|a)+, (a|aa)*) WITHOUT running any
+    // regex against the pattern itself, so the detector cannot be the
+    // victim of the very ReDoS it exists to find.
+    /** @type {Array<{hasQuantifier: boolean, hasAlternation: boolean}>} */
+    const groupStack = [];
+    let lastClosedGroupDangerous = false;
+    let prevSignificant = '';
+
+    for (let i = 0; i < src.length; i++) {
+      const ch = src[i];
+
+      if (ch === '\\') {
+        // Escaped character (e.g. \( \) \* \|). The escaped char is
+        // still a real token (e.g. `\s`, `\d`) that sits between a
+        // closed group and any later quantifier, so it disarms the
+        // "quantifier immediately after )" alarm.
+        if (i + 1 < src.length) {
+          prevSignificant = src[i + 1];
+          lastClosedGroupDangerous = false;
+          i++;
+        }
+        continue;
+      }
+      if (ch === '[') {
+        // Skip character classes — quantifiers inside are literal
+        while (i < src.length && src[i] !== ']') i++;
+        continue;
+      }
+      if (ch === '(') {
+        // A quantifier attached to the previous group (e.g. `(a|a)+`)
+        // is the dangerous nested case
+        if (lastClosedGroupDangerous) return true;
+        lastClosedGroupDangerous = false;
+        // Push a fresh state for this group; the parent's state stays
+        // on the stack so alternations/quantifiers in one group never
+        // leak into a nested group.
+        groupStack.push({ hasQuantifier: false, hasAlternation: false });
+        prevSignificant = ch;
+        continue;
+      }
+      if (ch === ')') {
+        const state = groupStack.pop();
+        if (state === undefined) {
+          // Unmatched `)` — treat as literal/benign
+          prevSignificant = ch;
+          continue;
+        }
+        prevSignificant = ch;
+        // Mark whether THIS group (now closed) was dangerous —
+        // a quantifier IMMEDIATELY following it triggers the alarm
+        lastClosedGroupDangerous = state.hasAlternation || state.hasQuantifier;
+        continue;
+      }
+      if (ch === '|') {
+        const state = groupStack[groupStack.length - 1];
+        if (state !== undefined) {
+          state.hasAlternation = true;
+          lastClosedGroupDangerous = false;
+        }
+        continue;
+      }
+      if (ch === '+' || ch === '*') {
+        // Quantifier immediately after a dangerous group: (a|a)+, (a+)+
+        if (lastClosedGroupDangerous) return true;
+        const state = groupStack[groupStack.length - 1];
+        if (state !== undefined) {
+          // Remember the group contains a quantifier; the actual
+          // danger is only when a quantifier lands on the group
+          // itself (`(a+)+`), which the `lastClosedGroupDangerous`
+          // check above catches at the group's closing paren.
+          // A quantifier on a plain token inside an alternation
+          // group (`(?:A|B\s+)`) is harmless, so no trigger here.
+          state.hasQuantifier = true;
+        }
+        lastClosedGroupDangerous = false;
+        continue;
+      }
+      if (ch === '{') {
+        // Bounded quantifier {n}, {n,}, {n,m} — same semantics
+        // as +/* for nesting purposes: (\d{2,})+ is catastrophic
+        const end = src.indexOf('}', i + 1);
+        if (end !== -1) {
+          if (lastClosedGroupDangerous) return true;
+          const state = groupStack[groupStack.length - 1];
+          if (state !== undefined) state.hasQuantifier = true;
+          lastClosedGroupDangerous = false;
+          i = end;
+        }
+        continue;
+      }
+      if (ch !== ' ') {
+        prevSignificant = ch;
+        // Any ordinary character between a closed group and a
+        // later quantifier (e.g. `(?:A|B)\s+`) disarms the alarm —
+        // only a quantifier IMMEDIATELY after `)` is dangerous
+        lastClosedGroupDangerous = false;
+      }
+    }
     return false;
   } catch (_err) {
     return true;
