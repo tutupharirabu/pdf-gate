@@ -54,7 +54,7 @@ jobs:
       # analyze (via needs: setup). Retention 1 hari cukup — seluruh cell matrix
       # analyze berjalan segera setelah setup selesai.
       - name: Upload node_modules for analyze job
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: node_modules
           path: node_modules
