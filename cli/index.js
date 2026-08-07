@@ -9,7 +9,7 @@
  * @license MIT
  */
 
-import { readFileSync, existsSync, writeFileSync, statSync } from 'node:fs';
+import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { resolve, basename } from 'node:path';
 import { Command } from 'commander';
 import pc from 'picocolors';
@@ -131,10 +131,12 @@ async function handleValidate(/** @type {string|undefined} */ file, /** @type {C
     }
   }
 
-  // File size check before reading to prevent OOM
-  const stats = statSync(filePath);
-  if (stats.size > MAX_BUFFER_SIZE) {
-    const sizeMB = (stats.size / 1024 / 1024).toFixed(1);
+  // Read the file, then enforce the size cap on the buffer we actually
+  // read (not a separate statSync+readFileSync pair, which is a
+  // time-of-check-to-time-of-use race).
+  const buffer = readFileSync(filePath);
+  if (buffer.length > MAX_BUFFER_SIZE) {
+    const sizeMB = (buffer.length / 1024 / 1024).toFixed(1);
     const maxMB = MAX_BUFFER_SIZE / 1024 / 1024;
     throw new Error(
       `File terlalu besar (${sizeMB} MB) melebihi batas ${maxMB} MB. ` +
@@ -142,7 +144,6 @@ async function handleValidate(/** @type {string|undefined} */ file, /** @type {C
     );
   }
 
-  const buffer = readFileSync(filePath);
   const skipLayer2 = options.skipCrypto || options.skipLayer2 || false;
 
   // ── OCR options (only forwarded when explicitly set by the user) ──
@@ -229,10 +230,11 @@ async function handleGenerateSchema(/** @type {CliOptions} */ options) {
     console.warn(pc.yellow(`  ⚠  Peringatan Keamanan: ${netCheck.reason}`));
   }
 
-  // File size check before reading to prevent OOM
-  const stats = statSync(templatePath);
-  if (stats.size > MAX_BUFFER_SIZE) {
-    const sizeMB = (stats.size / 1024 / 1024).toFixed(1);
+  // Read the template, then enforce the size cap on the buffer we
+  // actually read (avoids the statSync+readFileSync TOCTOU race).
+  const buffer = readFileSync(templatePath);
+  if (buffer.length > MAX_BUFFER_SIZE) {
+    const sizeMB = (buffer.length / 1024 / 1024).toFixed(1);
     const maxMB = MAX_BUFFER_SIZE / 1024 / 1024;
     throw new Error(
       `File template terlalu besar (${sizeMB} MB) melebihi batas ${maxMB} MB. ` +
@@ -240,7 +242,6 @@ async function handleGenerateSchema(/** @type {CliOptions} */ options) {
     );
   }
 
-  const buffer = readFileSync(templatePath);
   let schema, confidence, detectedFields, warnings;
   try {
     const genResult = await generateSchema(buffer, {
@@ -284,12 +285,12 @@ async function handleGenerateSchema(/** @type {CliOptions} */ options) {
   console.log(pc.green(`\n  ✓ Schema "${schema.name}" registered. Dapat digunakan dengan: --schema ${schema.name}`));
 
 
-  // Write to file if --output specified
+  // Write to file if --output specified. No existsSync pre-check: a
+  // check-then-write pair is a TOCTOU race; writeFileSync (default 'w'
+  // flag) overwrites atomically and the overwrite note below is purely
+  // informational.
   if (options.output) {
     const outPath = resolve(options.output);
-    if (existsSync(outPath)) {
-      console.log(pc.yellow(`  ⚠  Overwriting existing file: ${outPath}`));
-    }
     const jsonSchema = schemaToJSON(schema);
     writeFileSync(outPath, JSON.stringify(jsonSchema, null, 2), 'utf-8');
     console.log(pc.green(`  ✓ Saved to: ${outPath}`));
