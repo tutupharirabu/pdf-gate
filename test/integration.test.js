@@ -4,23 +4,7 @@
  *              input validation, error handling. Uses real Layer 1 logic.
  */
 
-import { validatePDF, generateSchema, registerSchema } from '../src/index.js';
-
-const IJAZAH_TEXT = `
-KEMENTERIAN PENDIDIKAN
-IJAZAH
-No: 1234/UN/DIP/2024
-
-Dinyatakan bahwa:
-Nama : Ahmad Fauzi Rahman
-NIM  : 20190001
-Program Studi : Teknik Informatika
-Telah menyelesaikan program sarjana dan dinyatakan lulus pada tanggal 15 Juli 2024
-Gelar : Sarjana Komputer
-
-Rektor Universitas Teknologi Indonesia
-Dekan Fakultas Ilmu Komputer
-`;
+import { validatePDF } from '../src/index.js';
 
 function makeBuffer(size = 10000) {
   return Buffer.alloc(size, 'x');

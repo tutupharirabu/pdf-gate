@@ -99,7 +99,7 @@ describe('resolveSchema', () => {
 
 describe('registerSchema / unregisterSchema', () => {
   test('registers a custom schema successfully', () => {
-    const schema = registerSchema(validCustomSchema());
+    registerSchema(validCustomSchema());
     expect(SCHEMAS.has('test-custom')).toBe(true);
     expect(/** @type {import('../src/types.js').Schema} */ (SCHEMAS.get('test-custom')).name).toBe('test-custom');
   });
@@ -129,7 +129,7 @@ describe('registerSchema / unregisterSchema', () => {
   });
 
   test('parses string patterns on registration', () => {
-    const schema = registerSchema(/** @type {any} */ ({
+    registerSchema(/** @type {any} */ ({
       name: 'test-pattern',
       label: 'Test Patterns',
       fingerprints: ['/test/i', 'dokumen'],

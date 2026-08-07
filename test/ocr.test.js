@@ -255,7 +255,7 @@ function makeMultiPageEmptyPdf(pageCount) {
   addObject('<< /Type /Catalog /Pages 2 0 R >>');
   addObject(`<< /Type /Pages /Kids [${kids.join(' ')}] /Count ${pageCount} >>`);
 
-  for (const { objNum, contentNum } of pages) {
+  for (const { contentNum } of pages) {
     addObject(
       `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents ${contentNum} 0 R >>`,
     );

@@ -94,7 +94,7 @@ describe('runLayer2 — backward compatibility (unsigned bearer)', () => {
       'signedAt', 'failReason', 'durationMs',
     ];
 
-    for (const [name, filePath] of Object.entries(FIXTURES)) {
+    for (const [, filePath] of Object.entries(FIXTURES)) {
       if (!existsSync(filePath)) continue;
       const buffer = readFileSync(filePath);
       const result = await runLayer2(buffer);

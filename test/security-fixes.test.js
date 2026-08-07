@@ -6,7 +6,7 @@
  *              - runLayer2 trustedIssuers pinning (backward compatible)
  */
 
-import { writeFileSync, mkdirSync, rmSync, existsSync } from 'node:fs';
+import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -114,19 +114,19 @@ describe('loadSchemaFromFile path-traversal bounding', () => {
   const schemaPath = join(TMP, 'schema.json');
 
   beforeAll(() => {
-    writeFileSync(schemaPath, validSchemaJson('ext-allowed'));
+    writeFileSync(schemaPath, validSchemaJson('ext-allowed'), { mode: 0o600 });
   });
 
   test('accepts a path within allowedRoot', async () => {
     // use a fresh name to avoid duplicate-registration from earlier runs
-    writeFileSync(schemaPath, validSchemaJson('ext-allowed'));
+    writeFileSync(schemaPath, validSchemaJson('ext-allowed'), { mode: 0o600 });
     const schema = await loadSchemaFromFile(schemaPath, { allowedRoot: TMP });
     expect(schema.name).toBe('ext-allowed');
     expect(SCHEMAS.has('ext-allowed')).toBe(true);
   });
 
   test('rejects a path outside allowedRoot (path traversal)', async () => {
-    writeFileSync(schemaPath, validSchemaJson('ext-traversal'));
+    writeFileSync(schemaPath, validSchemaJson('ext-traversal'), { mode: 0o600 });
     await expect(
       loadSchemaFromFile(schemaPath, { allowedRoot: join(tmpdir(), 'some-other-dir') }),
     ).rejects.toThrow(/Akses ditolak/);
@@ -134,12 +134,12 @@ describe('loadSchemaFromFile path-traversal bounding', () => {
 
   test('rejects arbitrary absolute path under default allowedRoot (cwd)', async () => {
     // /tmp/... is outside the project cwd by default → must be rejected
-    writeFileSync(schemaPath, validSchemaJson('ext-traversal'));
+    writeFileSync(schemaPath, validSchemaJson('ext-traversal'), { mode: 0o600 });
     await expect(loadSchemaFromFile(schemaPath)).rejects.toThrow(/Akses ditolak/);
   });
 
   test('allows any path when allowedRoot is null (trusted context)', async () => {
-    writeFileSync(schemaPath, validSchemaJson('ext-null'));
+    writeFileSync(schemaPath, validSchemaJson('ext-null'), { mode: 0o600 });
     const schema = await loadSchemaFromFile(schemaPath, { allowedRoot: null });
     expect(schema.name).toBe('ext-null');
   });
