@@ -20,7 +20,7 @@
 - **Auto-Generate Schema**: Generate schema otomatis dari PDF template institusi — deteksi 4 pola layout.
 - **OCR untuk PDF Scan**: Deteksi teks otomatis untuk PDF scan — tesseract.js WASM (ind+eng), fully local, hasil OCR masuk Layer 1.
 - **Zero Trust Security**: No network, input sanitization, ReDoS protection, buffer zeroing.
-- **Ringan & Efisien**: Core validation < 50KB (OCR engine optional, lazy-loaded), `picocolors` (2.6KB) gantikan `chalk`, lightweight fallback parser tanpa `pdfjs-dist`.
+- **Ringan & Efisien**: Core validation < 50KB (OCR engine optional, lazy-loaded), `picocolors` (2.6KB) gantikan `chalk`.
 
 ---
 
@@ -222,7 +222,7 @@ const result = await validatePDF(buffer, {
 ```js
 layer1.ocr: {
   used: true,
-  engine: "tesseract.js@6.0.1",,
+  engine: "tesseract.js@6.0.1",
   languages: ['ind', 'eng'],
   confidence: 0.92,
   durationMs: 1843,
@@ -232,7 +232,7 @@ layer1.ocr: {
 }
 ```
 
-> **Catatan:** Engine OCR di-load secara **lazy** (dynamic import — hanya saat dibutuhkan). Traineddata `ind` + `eng` (lisensi Apache-2.0, dari `tesseract-ocr/tessdata_best`) di-bundle sehingga ukuran paket naik ke **±50MB**; core validation tetap **< 50KB**.
+> **Catatan:** Engine OCR di-load secara **lazy** (dynamic import — hanya saat dibutuhkan). Traineddata `ind` + `eng` (lisensi Apache-2.0, dari `tesseract-ocr/tessdata_best`) dan standard fonts pdfjs di-bundle — ukuran tarball **±21MB**; core validation tetap **< 50KB**.
 
 ---
 
@@ -286,8 +286,10 @@ layer1.ocr: {
 
 ```bash
 npm install
-npm test                 # Run all tests (11 suites, 106+ tests)
+npm test                 # Run all tests (11 suites, 108 tests)
 npm run test:coverage    # Coverage report
+npm run typecheck        # tsc --noEmit (JSDoc strict)
+npm run check:pack       # npm pack --dry-run (isi tarball)
 ```
 
 ---
@@ -310,9 +312,37 @@ pdf-gate/
 ├── examples/                  # Custom schema examples
 ├── test/                      # 11 test suites (incl. ocr.test.js)
 ├── .github/workflows/ci.yml   # CI (typecheck + tests + pack check)
+├── .github/workflows/codeql.yml # CodeQL Advanced (2 profil + quality gate)
 ├── LICENSE                    # MIT
 └── package.json
 ```
+
+---
+
+## 🗺️ Roadmap
+
+### Arah pengembangan: integrasi [pdf-inspector](https://github.com/firecrawl/pdf-inspector) (Firecrawl)
+
+pdf-inspector adalah library Rust untuk klasifikasi & ekstraksi PDF tanpa OCR. Integrasinya memperkuat **jantung visi pdf-gate** — memastikan file yang diupload benar-benar sesuai peruntukannya (mis. ketentuan KTP → file selain KTP langsung ditolak):
+
+```
+Upload PDF → klasifikasi (10-50ms) → TextBased? → fingerprint langsung
+                                → Scanned?  → OCR halaman yang perlu → fingerprint
+                                → Bukan KTP → ERROR: "terdeteksi sebagai Ijazah, bukan KTP"
+```
+
+> **Catatan penting**: pdf-inspector TIDAK mengenali "KTP vs Ijazah" — ia hanya mengklasifikasi `TextBased/Scanned/ImageBased/Mixed` dan memperbaiki kualitas teks. Keputusan tipe dokumen tetap sepenuhnya milik pdf-gate (fingerprint + schema rules).
+
+| Fase | Isi | Estimasi | Status |
+|---|---|---|---|
+| **1. Smart Classification + OCR Routing** | Klasifikasi 4-tipe di Gate 1 (fallback heuristik), OCR hanya halaman yang butuh (`pages_needing_ocr`), metadata `layer1.classification`, bonus `strictMode` + failReason actionable | 0.5-1 hari | ⏳ Belum mulai |
+| **2. Encoding Quality Detection** | Deteksi font encoding rusak (ciri manipulasi) → auto-fallback OCR — anti silent-fail | 0.5 hari | ⏳ Belum mulai |
+| **3. Table-Aware Field Extraction** | `tableRules` untuk schema `transkrip` (IPK/SKS) & `kk` (anggota keluarga) | 1-1.5 hari | ⏳ Belum mulai |
+| **4. Markdown API** | `extractMarkdown()` — ⛔ **OFF-SCOPE** (untuk RAG/LLM, di luar visi inti) | — | ⛔ Ditunda |
+
+**Risiko utama**: native binary N-API = supply-chain surface lebih besar → dimitigasi optional dep + lazy-load + WASM sebagai alternatif; platform tanpa prebuild (mis. Intel Mac) → fallback heuristik otomatis.
+
+**Keputusan yang perlu dikonfirmasi**: (1) engine default N-API vs WASM, (2) urutan fase, (3) cakupan Phase 3.
 
 ---
 
