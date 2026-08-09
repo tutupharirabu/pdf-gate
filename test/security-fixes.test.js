@@ -99,8 +99,24 @@ describe('zero-trust module (was broken by missing brace)', () => {
   });
 
   test('createSecureContext rejects prototype-pollution keys', () => {
-    const ctx = /** @type {any} */ (zeroTrust.createSecureContext({ __proto__: 'evil', constructor: 'x', prototype: 'y', ok: 1 }));
+    // Bangun payload secara eksplisit: `__proto__` di object literal TIDAK
+    // membuat own property (nilai non-object diam-diam diabaikan), sehingga
+    // key tersebut harus dibuat via defineProperty agar benar-benar menjadi
+    // attacker-controlled key yang harus di-strip oleh createSecureContext.
+    const payload = Object.create(null);
+    Object.defineProperty(payload, '__proto__', {
+      value: null,
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
+    payload.constructor = 'x';
+    payload.prototype = 'y';
+    payload.ok = 1;
+
+    const ctx = /** @type {any} */ (zeroTrust.createSecureContext(payload));
     expect(ctx.ok).toBe(1);
+    expect(ctx).not.toHaveProperty('__proto__');
     expect(ctx).not.toHaveProperty('constructor');
     expect(ctx).not.toHaveProperty('prototype');
   });
