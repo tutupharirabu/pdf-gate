@@ -105,7 +105,7 @@ describe('zero-trust module (was broken by missing brace)', () => {
     // attacker-controlled key yang harus di-strip oleh createSecureContext.
     const payload = Object.create(null);
     Object.defineProperty(payload, '__proto__', {
-      value: 'evil',
+      value: null,
       enumerable: true,
       writable: true,
       configurable: true,
