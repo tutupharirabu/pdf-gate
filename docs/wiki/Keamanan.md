@@ -68,9 +68,9 @@ Lima lapis:
 - `ZERO_TRUST_MODE = true`: konstanta ekspor sebagai penanda mode zero-trust.
 - `validateDependencies()` — lihat §1.
 
-## Referensi Audit
+## Status Perbaikan Audit Historis
 
-Temuan keamanan historis didokumentasikan di [`docs/audit-report.md`](../audit-report.md) (40+ temuan, fase perbaikan). Catatan yang relevan untuk postur saat ini:
+Ringkasan perbaikan atas temuan audit awal (dokumen audit lama sudah diarsipkan — seluruh temuan sudah ditangani):
 
 - **#3 (global `unhandledRejection`) & #4 (`timingSafeEqual` dead code)** — sudah dihapus dari `src/index.js` versi sekarang; `types.js` (#5) sudah sinkron dengan runtime (`status`/`passed`/`durationMs`).
 - **#6 (`safeExec` ReDoS)** — kini ada pre-check 1 s + `isRegexMalicious()` + input caps sebagai mitigasi berlapis; keterbatasan isolasi worker tetap didokumentasikan di source.

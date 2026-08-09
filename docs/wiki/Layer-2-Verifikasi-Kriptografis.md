@@ -89,7 +89,7 @@ const result = await validatePDF(buffer, {
 - **Hanya signature pertama yang dipetakan** — dokumen multi-signature hanya mengevaluasi `signatures[0]`.
 - **`hasSignature: false` ≠ kegagalan** — menghasilkan `PLAUSIBLE`, bukan `FAILED`; gunakan `--skip-crypto`/`skipLayer2` hanya bila kebutuhan Anda murni sanity check.
 - **Verifikasi tidak bergantung pada teks OCR** — Layer 2 bekerja pada byte PDF mentah, jadi dokumen scan pun bisa diverifikasi tanpa OCR.
-- **Test coverage Layer 2 tipis** — `test/layer2.test.js` hanya memverifikasi shape/ekspor dan hasil pada input non-PDF (lihat [audit-report](../audit-report.md) temuan #21); perilaku mapping diuji lewat regression suite `layer2-regression.test.js` dan `security-fixes.test.js` (trustedIssuers).
+- **Test coverage Layer 2** — `test/layer2.test.js` memverifikasi shape/ekspor dan hasil pada input non-PDF; perilaku mapping diuji lewat regression suite `layer2-regression.test.js` dan `security-fixes.test.js` (trustedIssuers).
 
 ## Lihat Juga
 

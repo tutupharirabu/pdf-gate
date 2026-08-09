@@ -1,6 +1,6 @@
 # 🤖 OCR untuk PDF Scan
 
-Dukungan OCR untuk dokumen PDF hasil scan — **tesseract.js v6 (WASM)**, bahasa **Indonesia + Inggris**, **fully local** (zero network — zero-trust tetap terjaga). Desain: `docs/superpowers/specs/2026-08-04-ocr-support-design.md`.
+Dukungan OCR untuk dokumen PDF hasil scan — **tesseract.js v6 (WASM)**, bahasa **Indonesia + Inggris**, **fully local** (zero network — zero-trust tetap terjaga).
 
 ---
 

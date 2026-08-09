@@ -32,10 +32,10 @@ pdf-gate/
 ├── demo/                      # Demo server Express + multer
 ├── examples/                  # Contoh schema kustom (JSON/JS)
 ├── test/                      # Suite Jest (ESM)
-└── docs/                      # Wiki (docs/wiki/) + audit + roadmap
+└── docs/                      # Wiki (docs/wiki/) + roadmap
 ```
 
-Konteks desain: `docs/superpowers/specs/2026-08-04-ocr-support-design.md`, `docs/roadmap-2026-08-05-pdf-inspector-integration.md`.
+Konteks desain: `docs/roadmap-2026-08-05-pdf-inspector-integration.md`.
 
 ## Menjalankan Test
 
